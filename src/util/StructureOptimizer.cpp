@@ -1,6 +1,10 @@
 #include <util/StructureOptimizer.hpp>
 #include <manager/BrushManager.hpp>
+#include <Geode/binding/GameObject.hpp>
+#include <Geode/binding/LevelEditorLayer.hpp>
+#include <Geode/utils/cocos.hpp>
 #include <algorithm>
+#include <cmath>
 
 using namespace paibot;
 using namespace geode::prelude;
@@ -26,8 +30,17 @@ bool StructureOptimizer::init() {
     m_preserveChannels = true;
     m_noTouchHitboxes = true;
     m_visualTolerance = 1.0f;
-    
+    m_options = OptimizeOptions{};
+
     return true;
+}
+
+void StructureOptimizer::setOptions(OptimizeOptions const& opts) {
+    m_options = opts;
+}
+
+OptimizeOptions StructureOptimizer::getOptions() const {
+    return m_options;
 }
 
 void StructureOptimizer::setOptimizationMode(OptimizationMode mode) {
@@ -54,6 +67,12 @@ void StructureOptimizer::setPreserveOptions(bool groupIDs, bool zOrder, bool cha
 }
 
 OptimizationStats StructureOptimizer::optimizeSelection(const std::vector<GameObject*>& objects) {
+    if (objects.empty()) {
+        log::info("Structure optimizer: no objects supplied");
+        m_lastStats = {};
+        return m_lastStats;
+    }
+
     // Placeholder implementation
     OptimizationStats stats;
     float targetReduction = 0.3f;
@@ -62,14 +81,19 @@ OptimizationStats StructureOptimizer::optimizeSelection(const std::vector<GameOb
         targetReduction = std::clamp(brushManager->getOptimizerTargetReduction(), 0.1f, 0.9f);
     }
 
-    stats.objectsBefore = objects.size();
-    stats.objectsAfter = static_cast<int>(objects.size() * (1.0f - targetReduction));
-    stats.reductionPercentage = targetReduction * 100.0f;
+    stats.objectsBefore = static_cast<int>(objects.size());
+    stats.objectsAfter = std::max(0, static_cast<int>(std::round(objects.size() * (1.0f - targetReduction))));
+    if (stats.objectsBefore > 0) {
+        stats.reductionPercentage = static_cast<float>(stats.objectsBefore - stats.objectsAfter) /
+                                    static_cast<float>(stats.objectsBefore) * 100.0f;
+    } else {
+        stats.reductionPercentage = 0.0f;
+    }
     stats.deltaE = 0.5f; // Simulated low visual difference
     stats.processingTime = 1.0f;
-    
+
     m_lastStats = stats;
-    
+
     log::info("Structure optimization: {} -> {} objects ({}% reduction)", 
               stats.objectsBefore, stats.objectsAfter, stats.reductionPercentage);
     
@@ -78,19 +102,24 @@ OptimizationStats StructureOptimizer::optimizeSelection(const std::vector<GameOb
 
 void StructureOptimizer::showPreview(const std::vector<GameObject*>& optimized) {
     m_isPreviewActive = true;
+    m_previewObjects = optimized;
     // In real implementation, show visual preview of optimized structure
     log::info("Showing optimization preview for {} objects", optimized.size());
 }
 
 void StructureOptimizer::hidePreview() {
     m_isPreviewActive = false;
+    m_previewObjects.clear();
     // In real implementation, hide preview overlay
     log::info("Hiding optimization preview");
 }
 
 void StructureOptimizer::applyOptimization() {
-    if (!m_isPreviewActive) return;
-    
+    if (!m_isPreviewActive) {
+        log::warn("Structure optimizer apply called without active preview");
+        return;
+    }
+
     // In real implementation, replace original objects with optimized ones
     log::info("Applying structure optimization");
     hidePreview();
@@ -163,6 +192,31 @@ bool StructureOptimizer::validateOptimization(const std::vector<GameObject*>& or
 
 OptimizationStats StructureOptimizer::getLastStats() const {
     return m_lastStats;
+}
+
+OptimizationStats StructureOptimizer::optimizeActiveSelection() {
+    auto* editorLayer = LevelEditorLayer::get();
+    if (!editorLayer) {
+        log::warn("Structure optimizer: editor layer unavailable");
+        return {};
+    }
+
+    std::vector<GameObject*> selection;
+    if (auto* selected = editorLayer->m_selectedObjects) {
+        selection.reserve(selected->count());
+        for (unsigned int i = 0; i < selected->count(); ++i) {
+            if (auto* obj = typeinfo_cast<GameObject*>(selected->objectAtIndex(i))) {
+                selection.push_back(obj);
+            }
+        }
+    }
+
+    if (selection.empty()) {
+        log::info("Structure optimizer: no objects selected");
+        return {};
+    }
+
+    return optimizeSelection(selection);
 }
 
 std::string StructureOptimizer::generateReport() const {

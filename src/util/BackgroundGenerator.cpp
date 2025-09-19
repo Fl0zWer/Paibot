@@ -43,7 +43,7 @@ BackgroundSettings BackgroundGenerator::getSettings() const {
 
 TileSet BackgroundGenerator::generateBackground() {
     TileSet tileSet;
-    
+
     switch (m_settings.type) {
         case BackgroundType::SeamlessFromImage:
             if (!m_settings.sourceImagePath.empty()) {
@@ -64,8 +64,15 @@ TileSet BackgroundGenerator::generateBackground() {
             tileSet = generateWangTiles();
             break;
     }
-    
+
+    if (!tileSet.tiles.empty()) {
+        tileSet.deltaE = calculateSeamlessness(tileSet.tiles.front());
+    } else {
+        tileSet.deltaE = 0.0f;
+    }
+
     m_currentTileSet = tileSet;
+    measureDeltaE(m_currentTileSet);
     return tileSet;
 }
 
@@ -73,20 +80,24 @@ void BackgroundGenerator::showPreview() {
     if (m_currentTileSet.tiles.empty()) {
         generateBackground();
     }
-    
+
     hidePreview(); // Clean up any existing preview
-    
+
     m_previewNode = createTilePreview(m_currentTileSet);
     if (m_previewNode) {
+        m_previewNode->retain();
         // Add to appropriate parent (would be editor layer in real implementation)
         m_isPreviewActive = true;
         log::info("Showing background preview with {} tiles", m_currentTileSet.tiles.size());
+    } else {
+        log::warn("Background preview unavailable: failed to create preview node");
     }
 }
 
 void BackgroundGenerator::hidePreview() {
     if (m_previewNode) {
         m_previewNode->removeFromParent();
+        m_previewNode->release();
         m_previewNode = nullptr;
     }
     m_isPreviewActive = false;
@@ -167,7 +178,7 @@ std::vector<cocos2d::CCPoint> BackgroundGenerator::findBestPatches(cocos2d::CCIm
 TileSet BackgroundGenerator::generateProcedural() {
     TileSet tileSet;
     tileSet.tileSize = m_settings.tileSize;
-    
+
     // Generate a simple procedural noise pattern
     auto heightmap = generatePerlinNoise(m_settings.tileSize, m_settings.noiseScale, m_settings.octaves);
     
@@ -185,11 +196,15 @@ TileSet BackgroundGenerator::generateProcedural() {
         if (coloredTile) {
             // Re-enable tile population so preview/export receive usable data.
             tileSet.tiles.push_back(coloredTile);
+        } else {
+            delete heightmap;
         }
+    } else {
+        log::warn("Procedural generation failed to create heightmap");
     }
-    
+
     log::info("Generated procedural tileset with {} noise octaves", m_settings.octaves);
-    
+
     return tileSet;
 }
 

@@ -24,8 +24,8 @@ namespace paibot {
         int m_gradientSteps = 32;
         float m_optimizerTargetReduction = 0.6f;
         int m_seamlessTileSize = 1024;
-    // ID of the object to place when drawing actual editor objects
-    int m_drawObjectId = 211;
+        // ID of the object to place when drawing actual editor objects
+        int m_drawObjectId = 211;
 
     public:
         static BrushManager* get();
@@ -51,5 +51,7 @@ namespace paibot {
         // Utility methods
         cocos2d::ccColor3B getBrushColor() const;
         float getGridSize() const;
+        int getDrawObjectId() const { return m_drawObjectId; }
     };
 }
+

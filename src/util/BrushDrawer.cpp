@@ -1,5 +1,7 @@
 #include <util/BrushDrawer.hpp>
 #include <manager/BrushManager.hpp>
+#include <Geode/binding/CCTouchDispatcher.hpp>
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 
@@ -124,7 +126,7 @@ void BrushDrawer::updateLine() {
     
     auto manager = BrushManager::get();
     auto color = manager->getBrushColor();
-    auto width = manager->m_brushWidth;
+    auto width = std::max(0.5f, manager->m_brushWidth);
     
     // Draw line segments
     for (size_t i = 1; i < m_points.size(); ++i) {
@@ -200,3 +202,9 @@ cocos2d::CCPoint BrushDrawer::snapToAngle(cocos2d::CCPoint const& point, cocos2d
         static_cast<float>(origin.y + offsetY)
     };
 }
+void BrushDrawer::registerWithTouchDispatcher() {
+    if (auto* dispatcher = CCDirector::get()->getTouchDispatcher()) {
+        dispatcher->addTargetedDelegate(this, -128, true);
+    }
+}
+

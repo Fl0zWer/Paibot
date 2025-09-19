@@ -32,9 +32,10 @@ void BrushManager::loadSettings() {
     auto mod = Mod::get();
     m_brushWidth = mod->getSettingValue<double>("brush-line-width");
     m_brushColorId = mod->getSettingValue<int64_t>("brush-color-id");
-    m_gradientSteps = mod->getSettingValue<int64_t>("gradient-steps");
+    m_gradientSteps = static_cast<int>(mod->getSettingValue<int64_t>("gradient-steps"));
     setOptimizerTargetReduction(mod->getSettingValue<double>("optimizer-target-reduction"));
-    m_seamlessTileSize = mod->getSettingValue<int64_t>("seamless-tile-size");
+    m_seamlessTileSize = static_cast<int>(mod->getSettingValue<int64_t>("seamless-tile-size"));
+    m_drawObjectId = static_cast<int>(mod->getSettingValue<int64_t>("draw-object-id"));
 }
 
 void BrushManager::saveSettings() {
@@ -44,6 +45,7 @@ void BrushManager::saveSettings() {
     mod->setSavedValue("gradient-steps", m_gradientSteps);
     mod->setSavedValue("optimizer-target-reduction", m_optimizerTargetReduction);
     mod->setSavedValue("seamless-tile-size", m_seamlessTileSize);
+    mod->setSavedValue("draw-object-id", m_drawObjectId);
 }
 
 void BrushManager::setOptimizerTargetReduction(float reduction) {

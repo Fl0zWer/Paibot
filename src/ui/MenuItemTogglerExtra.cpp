@@ -38,6 +38,10 @@ bool MenuItemTogglerExtra::init(
     return true;
 }
 
+void MenuItemTogglerExtra::activate() {
+    CCMenuItemToggler::activate();
+}
+
 void MenuItemTogglerExtra::toggle(bool toggled) {
     this->toggleWithCallback(toggled);
 }
@@ -47,7 +51,7 @@ void MenuItemTogglerExtra::toggleSilent(bool toggled) {
     CCMenuItemToggler::toggle(toggled);
 }
 
-bool MenuItemTogglerExtra::isToggled() {
+bool MenuItemTogglerExtra::isToggled() const {
     return CCMenuItemToggler::isToggled();
 }
 

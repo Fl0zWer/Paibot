@@ -23,6 +23,11 @@ bool PaibotButtonBar::init(EditorUI* editorUI) {
     if (!CCNode::init()) return false;
 
     m_buttons = CCArray::create();
+    if (!m_buttons) {
+        log::error("Failed to allocate button container for Paibot toolbar");
+        return false;
+    }
+    m_buttons->retain();
     auto winSize = CCDirector::get()->getWinSize();
     auto winBottom = CCDirector::get()->getScreenBottom();
     auto offset = ccp(winSize.width / 2 - 5.f, winBottom + editorUI->m_toolbarHeight - 6.f);
@@ -46,6 +51,11 @@ bool PaibotButtonBar::init(EditorUI* editorUI) {
             }
         };
     };
+
+    if (!toolManager) {
+        log::error("Tool manager unavailable; Paibot button bar cannot initialize");
+        return false;
+    }
 
     // Line Tool (matching Allium's pattern)
     m_lineToggle = this->addDefaultToggle(
@@ -138,6 +148,10 @@ bool PaibotButtonBar::init(EditorUI* editorUI) {
     );
 
     m_buttonBar = EditButtonBar::create(m_buttons, offset, 0, false, cols, rows);
+    if (!m_buttonBar) {
+        log::error("Failed to create EditButtonBar for Paibot toolbar");
+        return false;
+    }
     m_buttonBar->setID("paibot-tab-bar");
 
     return true;
@@ -153,13 +167,19 @@ PaibotButtonBar::~PaibotButtonBar() {
         manager->unregisterToggle(m_textToggle);
         manager->unregisterToggle(m_gradientBucketToggle);
     }
+    if (m_buttons) {
+        m_buttons->release();
+        m_buttons = nullptr;
+    }
 }
 
 void PaibotButtonBar::resetToggles(CCObject*) {
     if (auto manager = ToolManager::get()) {
         manager->clearActiveTool();
     }
-    EditorUI::get()->deselectAll();
+    if (auto editor = EditorUI::get()) {
+        editor->deselectAll();
+    }
 }
 
 EditButtonBar* PaibotButtonBar::getButtonBar() const {
@@ -206,7 +226,9 @@ CCMenuItemSpriteExtra* PaibotButtonBar::addButton(
         }
     );
     button->setID(id.data());
-    m_buttons->addObject(button);
+    if (m_buttons) {
+        m_buttons->addObject(button);
+    }
     return button;
 }
 
@@ -256,7 +278,9 @@ MenuItemTogglerExtra* PaibotButtonBar::addToggle(
         callback
     );
     button->setID(id.data());
-    m_buttons->addObject(button);
+    if (m_buttons) {
+        m_buttons->addObject(button);
+    }
     return button;
 }
 

@@ -59,6 +59,7 @@ namespace paibot {
         OptimizationStats m_lastStats;
         std::vector<GameObject*> m_previewObjects;
         bool m_isPreviewActive = false;
+        OptimizeOptions m_options;
         
     public:
         static StructureOptimizer* create();
@@ -72,13 +73,13 @@ namespace paibot {
         void setPreserveOptions(bool groupIDs, bool zOrder, bool channels, bool hitboxes);
         
     // Options
-    void setOptions(OptimizeOptions const& opts);
-    OptimizeOptions getOptions() const;
+        void setOptions(OptimizeOptions const& opts);
+        OptimizeOptions getOptions() const;
         
         // Main optimization pipeline
         OptimizationStats optimizeSelection(const std::vector<GameObject*>& objects);
     // Convenience: run on current selection if available (best-effort)
-    OptimizationStats optimizeActiveSelection();
+        OptimizationStats optimizeActiveSelection();
         void showPreview(const std::vector<GameObject*>& optimized);
         void hidePreview();
         void applyOptimization();
@@ -109,3 +110,4 @@ namespace paibot {
         std::string generateReport() const;
     };
 }
+
