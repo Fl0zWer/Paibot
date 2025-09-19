@@ -25,12 +25,16 @@ bool MenuItemTogglerExtra::init(
     std::function<void(MenuItemTogglerExtra*)> const& callback
 ) {
     // Initialize CCMenuItemToggler with off/on sprites and a valid selector
-    m_callback = callback;
     if (!CCMenuItemToggler::init(normalSprite, selectedSprite, this, menu_selector(MenuItemTogglerExtra::onToggle))) {
         return false;
     }
+    // Store callback after base initialization so that any internal resets performed by
+    // CCMenuItemToggler::init don't clobber the functor storage. In certain builds the base
+    // initializer zeroes or fills parts of the object, which previously left m_callback in a
+    // corrupted state (filled with 0xFF) and caused crashes when toggles were clicked.
+    m_callback = callback ? callback : [](MenuItemTogglerExtra*) {};
     // Do not toggle during init to avoid invoking callbacks before the owner wires references
-    
+
     return true;
 }
 
@@ -48,7 +52,7 @@ bool MenuItemTogglerExtra::isToggled() {
 }
 
 void MenuItemTogglerExtra::setCallback(std::function<void(MenuItemTogglerExtra*)> const& callback) {
-    m_callback = callback;
+    m_callback = callback ? callback : [](MenuItemTogglerExtra*) {};
 }
 
 void MenuItemTogglerExtra::onToggle(cocos2d::CCObject*) {
