@@ -8,8 +8,10 @@ MenuItemTogglerExtra* MenuItemTogglerExtra::create(
     cocos2d::CCNode* selectedSprite,
     std::function<void(MenuItemTogglerExtra*)> const& callback
 ) {
+    // Always provide a valid callback (no-op if empty)
+    auto safeCallback = callback ? callback : [](MenuItemTogglerExtra*){};
     auto ret = new (std::nothrow) MenuItemTogglerExtra();
-    if (ret && ret->init(normalSprite, selectedSprite, callback)) {
+    if (ret && ret->init(normalSprite, selectedSprite, safeCallback)) {
         ret->autorelease();
         return ret;
     }
@@ -22,43 +24,43 @@ bool MenuItemTogglerExtra::init(
     cocos2d::CCNode* selectedSprite,
     std::function<void(MenuItemTogglerExtra*)> const& callback
 ) {
-    if (!CCMenuItemToggle::initWithTarget(this, menu_selector(MenuItemTogglerExtra::activate))) {
+    // Initialize CCMenuItemToggler with off/on sprites and a valid selector
+    m_callback = callback;
+    if (!CCMenuItemToggler::init(normalSprite, selectedSprite, this, menu_selector(MenuItemTogglerExtra::onToggle))) {
         return false;
     }
-    
-    auto normalItem = CCMenuItemSprite::create(normalSprite, normalSprite);
-    auto selectedItem = CCMenuItemSprite::create(selectedSprite, selectedSprite);
-    
-    this->addSubItem(normalItem);
-    this->addSubItem(selectedItem);
-    
-    m_callback = callback;
-    m_isToggled = false;
-    this->setSelectedIndex(0);
+    // Do not toggle during init to avoid invoking callbacks before the owner wires references
     
     return true;
 }
 
-void MenuItemTogglerExtra::activate() {
-    CCMenuItemToggle::activate();
-    m_isToggled = !m_isToggled;
-    
-    if (m_callback) {
-        m_callback(this);
-    }
-}
-
 void MenuItemTogglerExtra::toggle(bool toggled) {
-    if (m_isToggled != toggled) {
-        m_isToggled = toggled;
-        this->setSelectedIndex(toggled ? 1 : 0);
-    }
+    this->toggleWithCallback(toggled);
 }
 
-bool MenuItemTogglerExtra::isToggled() const {
-    return m_isToggled;
+void MenuItemTogglerExtra::toggleSilent(bool toggled) {
+    // Call base toggle without callback to avoid re-entrancy
+    CCMenuItemToggler::toggle(toggled);
+}
+
+bool MenuItemTogglerExtra::isToggled() {
+    return CCMenuItemToggler::isToggled();
 }
 
 void MenuItemTogglerExtra::setCallback(std::function<void(MenuItemTogglerExtra*)> const& callback) {
     m_callback = callback;
+}
+
+void MenuItemTogglerExtra::onToggle(cocos2d::CCObject*) {
+    if (!m_callback) return;
+    // Prevent re-entrant clicks while handling callback
+    this->setClickable(false);
+    this->retain();
+    try {
+        if (m_callback) m_callback(this);
+    } catch (...) {
+        // Swallow any exception to avoid crash
+    }
+    this->release();
+    this->setClickable(true);
 }

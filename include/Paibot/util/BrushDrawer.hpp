@@ -4,7 +4,7 @@
 
 namespace paibot {
     // Base class for all drawing tools (inspired by Allium's BrushDrawer)
-    class BrushDrawer : public cocos2d::CCNode {
+    class BrushDrawer : public cocos2d::CCLayer {
     protected:
         cocos2d::CCDrawNode* m_overlayDrawNode = nullptr;
         std::vector<cocos2d::CCPoint> m_points;
@@ -21,7 +21,7 @@ namespace paibot {
         virtual void updateLine();
         
         // Input handling (with Allium-style modifiers)
-        virtual bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event);
+    virtual bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event);
         virtual void ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event);
         virtual void ccTouchEnded(cocos2d::CCTouch* touch, cocos2d::CCEvent* event);
         

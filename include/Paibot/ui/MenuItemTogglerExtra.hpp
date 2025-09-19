@@ -1,13 +1,14 @@
 #pragma once
 
 #include <Geode/Geode.hpp>
+#include <Geode/binding/CCMenuItemToggler.hpp>
 
 namespace paibot {
     // Custom toggle button class inspired by Allium's MenuItemTogglerExtra
-    class MenuItemTogglerExtra : public cocos2d::CCMenuItemToggle {
+    class MenuItemTogglerExtra : public CCMenuItemToggler {
     protected:
         std::function<void(MenuItemTogglerExtra*)> m_callback;
-        bool m_isToggled = false;
+        void onToggle(cocos2d::CCObject*);
         
     public:
         static MenuItemTogglerExtra* create(
@@ -22,9 +23,11 @@ namespace paibot {
             std::function<void(MenuItemTogglerExtra*)> const& callback
         );
         
-        void activate() override;
+        // Toggle and invoke callback
         void toggle(bool toggled);
-        bool isToggled() const;
+        // Toggle without invoking callback (for programmatic resets)
+        void toggleSilent(bool toggled);
+    bool isToggled();
         
         void setCallback(std::function<void(MenuItemTogglerExtra*)> const& callback);
     };

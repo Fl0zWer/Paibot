@@ -9,7 +9,6 @@ using namespace geode::prelude;
 BackgroundGenerator* BackgroundGenerator::create() {
     auto ret = new (std::nothrow) BackgroundGenerator();
     if (ret && ret->init()) {
-        ret->autorelease();
         return ret;
     }
     delete ret;
@@ -201,7 +200,7 @@ cocos2d::CCImage* BackgroundGenerator::generatePerlinNoise(int size, float scale
     auto texture = new cocos2d::CCTexture2D();
     // In real implementation, would generate proper Perlin noise here
     
-    log::info("Generated {}x{} Perlin noise with scale {}", size, size, scale);
+    log::info("Generated {}x{} Perlin noise with scale {}", size, size, static_cast<double>(scale));
     
     return nullptr; // Placeholder return
 }
@@ -284,7 +283,11 @@ cocos2d::CCNode* BackgroundGenerator::createTilePreview(const TileSet& tileSet, 
     for (int y = 0; y < previewRows; ++y) {
         for (int x = 0; x < previewCols; ++x) {
             auto placeholder = CCSprite::create();
-            placeholder->setColor({128 + x * 20, 128 + y * 20, 200});
+            placeholder->setColor({
+                static_cast<GLubyte>(128 + x * 20),
+                static_cast<GLubyte>(128 + y * 20),
+                static_cast<GLubyte>(200)
+            });
             placeholder->setTextureRect({0, 0, 64, 64});
             placeholder->setPosition({x * 70.0f, y * 70.0f});
             node->addChild(placeholder);
@@ -302,18 +305,20 @@ void BackgroundGenerator::measureDeltaE(const TileSet& tileSet) {
 std::string BackgroundGenerator::generateExportJSON(const TileSet& tileSet) {
     // Placeholder for JSON export
     return fmt::format(
-        "{\n"
-        "  \"tileSize\": {},\n"
-        "  \"tileCount\": {},\n"
-        "  \"seamlessness\": {:.2f},\n"
-        "  \"settings\": {{\n"
-        "    \"type\": \"{}\",\n"
-        "    \"seed\": {}\n"
-        "  }}\n"
-        "}",
+        fmt::runtime(
+            "{\n"
+            "  \"tileSize\": {},\n"
+            "  \"tileCount\": {},\n"
+            "  \"seamlessness\": {:.2f},\n"
+            "  \"settings\": {{\n"
+            "    \"type\": \"{}\",\n"
+            "    \"seed\": {}\n"
+            "  }}\n"
+            "}"
+        ),
         tileSet.tileSize,
-        tileSet.tiles.size(),
-        tileSet.deltaE,
+        static_cast<unsigned long long>(tileSet.tiles.size()),
+        static_cast<double>(tileSet.deltaE),
         static_cast<int>(m_settings.type),
         m_settings.noiseSeed
     );

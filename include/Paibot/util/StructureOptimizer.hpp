@@ -29,6 +29,7 @@ namespace paibot {
         bool m_preserveChannels = true;
         bool m_noTouchHitboxes = true;
         float m_visualTolerance = 1.0f;
+    float m_optimizerTargetReduction = 0.3f; // 30% default target
         
         OptimizationStats m_lastStats;
         std::vector<GameObject*> m_previewObjects;

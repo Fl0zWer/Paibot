@@ -61,5 +61,8 @@ namespace paibot {
         void showPreview();
         void hidePreview();
         void applyGradient();
+
+    protected:
+        void drawGradientPreview();
     };
 }

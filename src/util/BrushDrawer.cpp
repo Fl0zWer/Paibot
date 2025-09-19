@@ -16,7 +16,7 @@ BrushDrawer* BrushDrawer::create() {
 }
 
 bool BrushDrawer::init() {
-    if (!CCNode::init()) return false;
+    if (!CCLayer::init()) return false;
     
     m_overlayDrawNode = CCDrawNode::create();
     this->addChild(m_overlayDrawNode);
@@ -91,7 +91,7 @@ bool BrushDrawer::ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event)
         return false;
     }
     
-    auto point = touch->getLocationInNode(this);
+    auto point = this->convertToNodeSpace(touch->getLocation());
     startDrawing(point);
     return true;
 }
@@ -102,7 +102,7 @@ void BrushDrawer::ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event)
         return;
     }
     
-    auto point = touch->getLocationInNode(this);
+    auto point = this->convertToNodeSpace(touch->getLocation());
     updateDrawing(point);
 }
 
@@ -134,14 +134,14 @@ cocos2d::CCPoint BrushDrawer::snapToGrid(cocos2d::CCPoint const& point) const {
 
 cocos2d::CCPoint BrushDrawer::snapToAngle(cocos2d::CCPoint const& point, cocos2d::CCPoint const& origin) const {
     auto diff = ccpSub(point, origin);
-    auto angle = std::atan2(diff.y, diff.x);
+    auto angle = std::atan2(static_cast<double>(diff.y), static_cast<double>(diff.x));
     
     // Snap to 45° increments (90° as specified in requirements)
-    auto snappedAngle = std::round(angle / (M_PI / 4)) * (M_PI / 4);
-    auto length = ccpLength(diff);
+    auto snappedAngle = std::round(angle / (M_PI / 4.0)) * (M_PI / 4.0);
+    auto length = static_cast<double>(ccpLength(diff));
     
     return {
-        origin.x + length * std::cos(snappedAngle),
-        origin.y + length * std::sin(snappedAngle)
+    static_cast<float>(origin.x + static_cast<float>(length * std::cos(snappedAngle))),
+    static_cast<float>(origin.y + static_cast<float>(length * std::sin(snappedAngle)))
     };
 }

@@ -325,7 +325,14 @@ void GradientBrushDrawer::drawGradientPreview() {
             break;
         case GradientType::Radial:
             // Draw circle at start point
-            m_overlayDrawNode->drawCircle(m_startPoint, ccpDistance(m_startPoint, m_endPoint), 0, 32, false, 1.0f, ccc4FFromccc3B(color));
+            m_overlayDrawNode->drawCircle(
+                m_startPoint,
+                ccpDistance(m_startPoint, m_endPoint),
+                ccc4FFromccc3B(color),
+                1.0f,
+                ccc4FFromccc3B(color),
+                32
+            );
             break;
         case GradientType::Angular:
             // Draw arc indicator

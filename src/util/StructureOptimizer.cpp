@@ -7,7 +7,6 @@ using namespace geode::prelude;
 StructureOptimizer* StructureOptimizer::create() {
     auto ret = new (std::nothrow) StructureOptimizer();
     if (ret && ret->init()) {
-        ret->autorelease();
         return ret;
     }
     delete ret;
