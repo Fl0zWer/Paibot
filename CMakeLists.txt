@@ -17,7 +17,7 @@ if(NOT DEFINED GEODE_TARGET_PLATFORM)
     elseif(APPLE)
         set(GEODE_TARGET_PLATFORM "MacOS")
     else()
-        set(GEODE_TARGET_PLATFORM "Linux") # For our testing environment
+        set(GEODE_TARGET_PLATFORM "Win64") # Default to Win64 for compatibility
     endif()
 endif()
 
@@ -71,6 +71,7 @@ add_library(${PROJECT_NAME} SHARED
     # Manager classes
     src/manager/BrushManager.cpp
     src/manager/ToolManager.cpp
+    src/manager/PackManager.cpp
     
     # Utility classes - drawing tools
     src/util/BrushDrawer.cpp

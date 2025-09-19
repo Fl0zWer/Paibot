@@ -1,0 +1,31 @@
+{
+  "name": "Geometric Patterns Pack",
+  "author": "Paibot",
+  "version": "1.0.0",
+  "description": "A collection of procedural and geometric background patterns for Geometry Dash",
+  "icon": "pack_icon.png",
+  "backgrounds": [
+    "procedural_noise_01",
+    "geometric_abstract_01", 
+    "wang_tiles_seamless_01",
+    "geometrized_landscape_01"
+  ],
+  "metadata": {
+    "created": "2024-01-01T00:00:00Z",
+    "gameVersion": "2.207",
+    "geodeVersion": "4.8.0",
+    "paibotVersion": "0.1.0",
+    "tags": ["procedural", "geometric", "abstract", "seamless"],
+    "category": "backgrounds"
+  },
+  "requirements": {
+    "minGameVersion": "2.207",
+    "maxGameVersion": "2.3.0",
+    "minGeodeVersion": "4.8.0"
+  },
+  "install": {
+    "backgrounds": "backgrounds/",
+    "presets": "presets/",
+    "thumbnails": "thumbnails/"
+  }
+}

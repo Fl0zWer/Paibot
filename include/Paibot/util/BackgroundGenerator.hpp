@@ -5,13 +5,15 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <random>
 
 namespace paibot {
     enum class BackgroundType {
         SeamlessFromImage,
         TextureSynthesis,
         Procedural,
-        WangTiles
+        WangTiles,
+        Geometrization  // New mode for converting images to geometric patterns
     };
     
     enum class NoiseType {
@@ -34,6 +36,13 @@ namespace paibot {
         float persistence = 0.5f;
         float lacunarity = 2.0f;
         int version = 1; // For preset versioning
+        
+        // Geometrization settings
+        float colorTolerance = 0.1f;        // Color difference tolerance (Delta E)
+        int maxColors = 16;                 // Maximum colors in palette
+        float simplificationTolerance = 0.5f; // Polygon simplification tolerance
+        int targetResolution = 512;         // Target resolution for geometric patterns
+        bool optimizeForTiling = true;      // Optimize patterns for seamless tiling
     };
     
     struct TileSet {
@@ -124,6 +133,22 @@ namespace paibot {
         std::vector<cocos2d::CCImage*> createCompatibleTiles(int count);
         bool checkEdgeCompatibility(cocos2d::CCImage* tile1, cocos2d::CCImage* tile2, int edge);
         std::vector<std::vector<int>> generateTileLayout(int width, int height);
+        cocos2d::ccColor3B blendColors(const cocos2d::ccColor3B& c1, const cocos2d::ccColor3B& c2, float factor);
+        bool placeTileRecursive(std::vector<std::vector<int>>& layout, int x, int y, int width, int height, int tileCount, std::mt19937& rng);
+        bool isTileCompatibleAtPosition(const std::vector<std::vector<int>>& layout, int x, int y, int width, int height, int tileIdx);
+        
+        // Geometrization mode - convert images to geometric patterns
+        TileSet generateGeometrization();
+        std::vector<cocos2d::ccColor3B> segmentImageByColor(cocos2d::CCImage* image);
+        std::vector<std::vector<cocos2d::CCPoint>> extractColorRegions(cocos2d::CCImage* image, 
+                                                                       const std::vector<cocos2d::ccColor3B>& palette);
+        std::vector<cocos2d::CCPoint> simplifyPolygon(const std::vector<cocos2d::CCPoint>& polygon, float tolerance);
+        cocos2d::CCImage* renderGeometricPattern(const std::vector<std::vector<cocos2d::CCPoint>>& regions,
+                                                 const std::vector<cocos2d::ccColor3B>& palette,
+                                                 int outputSize);
+        std::vector<cocos2d::ccColor3B> reducePalette(const std::vector<cocos2d::ccColor3B>& colors, int maxColors);
+        float calculateColorDistance(const cocos2d::ccColor3B& c1, const cocos2d::ccColor3B& c2);
+        std::vector<std::vector<cocos2d::CCPoint>> optimizeForTiling(const std::vector<std::vector<cocos2d::CCPoint>>& regions);
         
         // Utility methods
         float calculateSeamlessness(cocos2d::CCImage* tile);
@@ -135,6 +160,18 @@ namespace paibot {
         cocos2d::CCNode* createTilePreview(const TileSet& tileSet, int previewCols = 3, int previewRows = 3);
         void measureDeltaE(const TileSet& tileSet);
         std::string generateExportJSON(const TileSet& tileSet);
+        
+        // Enhanced export functionality
+        void exportPresetJson(const std::string& path);
+        void exportSpritesheet(const std::string& path);
+        void generateThumbnail(const std::string& path);
+        void exportCompatibilityMatrix(const std::string& path);
+        
+        // Utility methods for export
+        std::string backgroundTypeToString(BackgroundType type);
+        std::string noiseTypeToString(NoiseType type);
+        std::string getCurrentTimestamp();
+        std::string calculatePresetHash();
         
         // Operation management
         std::string generateOperationId() const;
