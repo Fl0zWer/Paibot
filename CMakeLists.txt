@@ -10,6 +10,17 @@ project(PaibotGeodeBase VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Set platform for Geode
+if(NOT DEFINED GEODE_TARGET_PLATFORM)
+    if(WIN32)
+        set(GEODE_TARGET_PLATFORM "Win64")
+    elseif(APPLE)
+        set(GEODE_TARGET_PLATFORM "MacOS")
+    else()
+        set(GEODE_TARGET_PLATFORM "Win64") # Default to Win64 for compatibility
+    endif()
+endif()
+
 # Recommended toolchain: MSVC on Windows, Clang on other platforms
 # Compilation flags for optimization and debugging
 if(MSVC)
@@ -60,6 +71,7 @@ add_library(${PROJECT_NAME} SHARED
     # Manager classes
     src/manager/BrushManager.cpp
     src/manager/ToolManager.cpp
+    src/manager/PackManager.cpp
     
     # Utility classes - drawing tools
     src/util/BrushDrawer.cpp
