@@ -15,3 +15,6 @@ cmake-build-*/
 .DS_Store
 .vscode/
 .idea/
+
+# Geode SDK
+.geode-sdk/
