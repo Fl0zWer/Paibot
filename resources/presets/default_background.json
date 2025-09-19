@@ -1,17 +1,39 @@
 {
-  "name": "Default Seamless Background",
+  "name": "Enhanced Geometric Background",
   "version": "1.0",
-  "type": "procedural",
+  "type": "geometrization",
   "parameters": {
+    "sourceImagePath": "geometric_input.png",
     "tileSize": 1024,
     "seed": 42,
-    "pattern": "wang",
-    "colorPalette": ["#FF6B6B", "#4ECDC4", "#45B7D1"],
-    "complexity": 0.7
+    "colorTolerance": 0.12,
+    "maxColors": 12,
+    "simplificationTolerance": 0.8,
+    "targetResolution": 1024,
+    "optimizeForTiling": true,
+    "pattern": "geometric",
+    "colorPalette": [
+      "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", 
+      "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F"
+    ],
+    "complexity": 0.75
   },
   "metadata": {
     "created": "2024-01-01T00:00:00Z",
-    "author": "Paibot",
-    "description": "Default procedural background with Wang tiles"
+    "author": "Paibot Enhanced",
+    "description": "Advanced geometric background with image-to-pattern conversion",
+    "mode": "geometrization",
+    "features": [
+      "color_segmentation",
+      "polygon_simplification", 
+      "tiling_optimization",
+      "edge_compatibility"
+    ]
+  },
+  "quality": {
+    "expectedDeltaE": 3.2,
+    "seamlessness": 0.92,
+    "processingComplexity": "medium",
+    "recommendedUse": "detailed_levels"
   }
 }

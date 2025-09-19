@@ -7,6 +7,11 @@
 #include <memory>
 #include <random>
 
+// Forward declaration for PackManager integration
+namespace paibot {
+    class PackManager;
+}
+
 namespace paibot {
     enum class BackgroundType {
         SeamlessFromImage,

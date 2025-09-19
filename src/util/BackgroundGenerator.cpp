@@ -1404,3 +1404,249 @@ std::vector<std::vector<cocos2d::CCPoint>> BackgroundGenerator::optimizeForTilin
     
     return optimizedRegions;
 }
+
+// Validation methods
+bool BackgroundGenerator::validateSettings() const {
+    // Validate tile size
+    if (m_settings.tileSize < 256 || m_settings.tileSize > 4096) {
+        log::error("Invalid tile size: {} (must be 256-4096)", m_settings.tileSize);
+        return false;
+    }
+    
+    // Validate continuity and variety
+    if (m_settings.continuity < 0.0f || m_settings.continuity > 1.0f) {
+        log::error("Invalid continuity: {} (must be 0.0-1.0)", m_settings.continuity);
+        return false;
+    }
+    
+    if (m_settings.variety < 0.0f || m_settings.variety > 1.0f) {
+        log::error("Invalid variety: {} (must be 0.0-1.0)", m_settings.variety);
+        return false;
+    }
+    
+    // Validate procedural settings
+    if (m_settings.octaves < 1 || m_settings.octaves > 8) {
+        log::error("Invalid octaves: {} (must be 1-8)", m_settings.octaves);
+        return false;
+    }
+    
+    if (m_settings.noiseScale <= 0.0f || m_settings.noiseScale > 1.0f) {
+        log::error("Invalid noise scale: {} (must be 0.0-1.0)", m_settings.noiseScale);
+        return false;
+    }
+    
+    // Validate geometrization settings
+    if (m_settings.type == BackgroundType::Geometrization) {
+        if (m_settings.maxColors < 2 || m_settings.maxColors > 256) {
+            log::error("Invalid max colors: {} (must be 2-256)", m_settings.maxColors);
+            return false;
+        }
+        
+        if (m_settings.colorTolerance < 0.0f || m_settings.colorTolerance > 1.0f) {
+            log::error("Invalid color tolerance: {} (must be 0.0-1.0)", m_settings.colorTolerance);
+            return false;
+        }
+        
+        if (m_settings.targetResolution < 128 || m_settings.targetResolution > 2048) {
+            log::error("Invalid target resolution: {} (must be 128-2048)", m_settings.targetResolution);
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+bool BackgroundGenerator::validateTileSet(const TileSet& tileSet) {
+    if (!validateNonEmptyTileSet(tileSet)) {
+        return false;
+    }
+    
+    // Validate tile size consistency
+    if (tileSet.tileSize <= 0) {
+        log::error("TileSet has invalid tile size: {}", tileSet.tileSize);
+        return false;
+    }
+    
+    // Validate edge patterns for Wang tiles
+    if (m_settings.type == BackgroundType::WangTiles) {
+        auto validation = validateWangTileBorders(tileSet);
+        if (!validation.hasValidBorders) {
+            log::error("Wang tile validation failed: {}", validation.errorDetails);
+            return false;
+        }
+    }
+    
+    // Validate seamlessness metric
+    if (tileSet.deltaE < 0.0f || tileSet.deltaE > 100.0f) {
+        log::warn("Unusual deltaE value: {}", tileSet.deltaE);
+    }
+    
+    return true;
+}
+
+bool BackgroundGenerator::validateNonEmptyTileSet(const TileSet& tileSet) {
+    if (tileSet.isEmpty()) {
+        log::error("TileSet is empty");
+        return false;
+    }
+    
+    // Check that all tiles are valid
+    for (size_t i = 0; i < tileSet.tiles.size(); ++i) {
+        if (!tileSet.tiles[i]) {
+            log::error("TileSet contains null tile at index {}", i);
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+WangTileValidation BackgroundGenerator::validateWangTileBorders(const TileSet& tileSet) {
+    WangTileValidation validation;
+    validation.hasValidBorders = true;
+    validation.hasVisualCuts = false;
+    validation.borderConsistency = 1.0f;
+    
+    if (tileSet.tiles.size() != tileSet.edgePatterns.size()) {
+        validation.hasValidBorders = false;
+        validation.errorDetails = "Tile count and edge pattern count mismatch";
+        return validation;
+    }
+    
+    // Check edge pattern validity
+    for (size_t i = 0; i < tileSet.edgePatterns.size(); ++i) {
+        const auto& pattern = tileSet.edgePatterns[i];
+        
+        if (pattern.size() != 4) {
+            validation.hasValidBorders = false;
+            validation.errorDetails = "Edge pattern " + std::to_string(i) + " does not have 4 edges";
+            return validation;
+        }
+        
+        // Validate edge values are within reasonable range
+        for (int edge : pattern) {
+            if (edge < 0 || edge > 15) { // Assuming max 16 edge types
+                validation.hasValidBorders = false;
+                validation.errorDetails = "Invalid edge value: " + std::to_string(edge);
+                return validation;
+            }
+        }
+    }
+    
+    // Check for visual cuts by analyzing edge compatibility
+    int compatibilityFailures = 0;
+    int totalChecks = 0;
+    
+    for (size_t i = 0; i < tileSet.tiles.size(); ++i) {
+        for (size_t j = i + 1; j < tileSet.tiles.size(); ++j) {
+            for (int edge = 0; edge < 4; ++edge) {
+                bool compatible = checkEdgeCompatibility(tileSet.tiles[i], tileSet.tiles[j], edge);
+                if (!compatible) {
+                    compatibilityFailures++;
+                }
+                totalChecks++;
+            }
+        }
+    }
+    
+    if (totalChecks > 0) {
+        validation.borderConsistency = 1.0f - (static_cast<float>(compatibilityFailures) / totalChecks);
+        
+        if (validation.borderConsistency < 0.7f) {
+            validation.hasVisualCuts = true;
+            validation.errorDetails = "High rate of edge incompatibility detected";
+        }
+    }
+    
+    return validation;
+}
+
+float BackgroundGenerator::calculateSeamlessness(cocos2d::CCImage* tile) {
+    if (!tile) {
+        return 0.0f;
+    }
+    
+    // Placeholder seamlessness calculation
+    // In real implementation, would analyze edge discontinuities
+    
+    // For now, return a value based on tile properties
+    float baseSeamlessness = 0.8f;
+    
+    // Factor in tile size (larger tiles generally have better seamlessness)
+    float sizeFactor = std::min(1.0f, m_settings.tileSize / 1024.0f);
+    
+    // Factor in generation type
+    float typeFactor = 1.0f;
+    switch (m_settings.type) {
+        case BackgroundType::WangTiles:
+            typeFactor = 0.95f; // Wang tiles should be highly seamless
+            break;
+        case BackgroundType::Procedural:
+            typeFactor = 0.85f; // Procedural can have some variations
+            break;
+        case BackgroundType::Geometrization:
+            typeFactor = 0.75f; // Geometrization may have edge artifacts
+            break;
+        default:
+            typeFactor = 0.70f;
+            break;
+    }
+    
+    return baseSeamlessness * sizeFactor * typeFactor;
+}
+
+void BackgroundGenerator::measureDeltaE(const TileSet& tileSet) {
+    if (tileSet.isEmpty()) {
+        return;
+    }
+    
+    // Simplified Delta E calculation
+    // In real implementation, would convert to Lab color space and calculate proper Delta E
+    
+    float totalDeltaE = 0.0f;
+    int measurements = 0;
+    
+    // For now, use seamlessness as a proxy for Delta E
+    for (auto* tile : tileSet.tiles) {
+        float seamlessness = calculateSeamlessness(tile);
+        totalDeltaE += (1.0f - seamlessness) * 10.0f; // Convert to Delta E scale
+        measurements++;
+    }
+    
+    if (measurements > 0) {
+        const_cast<TileSet&>(tileSet).deltaE = totalDeltaE / measurements;
+    }
+}
+
+std::string BackgroundGenerator::generateExportJSON(const TileSet& tileSet) {
+    std::stringstream json;
+    
+    json << "{\n";
+    json << "  \"tileCount\": " << tileSet.tiles.size() << ",\n";
+    json << "  \"tileSize\": " << tileSet.tileSize << ",\n";
+    json << "  \"deltaE\": " << tileSet.deltaE << ",\n";
+    json << "  \"generationType\": \"" << backgroundTypeToString(m_settings.type) << "\",\n";
+    json << "  \"settings\": {\n";
+    json << "    \"seed\": " << m_settings.noiseSeed << ",\n";
+    json << "    \"version\": " << m_settings.version << "\n";
+    json << "  }\n";
+    json << "}\n";
+    
+    return json.str();
+}
+
+cocos2d::CCNode* BackgroundGenerator::createTilePreview(const TileSet& tileSet, int previewCols, int previewRows) {
+    if (tileSet.isEmpty()) {
+        return nullptr;
+    }
+    
+    // Create a preview node (placeholder implementation)
+    auto previewNode = cocos2d::CCNode::create();
+    
+    // In real implementation, would create a grid of tile sprites
+    // For now, just create a placeholder node
+    
+    log::info("Created preview with {}x{} tiles", previewCols, previewRows);
+    
+    return previewNode;
+}

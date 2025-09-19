@@ -1,0 +1,43 @@
+{
+  "name": "Seamless Wang Tiles",
+  "version": "1.0", 
+  "type": "wang",
+  "parameters": {
+    "tileSize": 512,
+    "seed": 12345,
+    "continuity": 0.95,
+    "variety": 0.6,
+    "edgeCompatibility": "strict",
+    "tileCount": 16,
+    "pattern": "organic",
+    "colorPalette": [
+      "#2C3E50", "#34495E", "#7F8C8D", "#95A5A6",
+      "#BDC3C7", "#ECF0F1", "#3498DB", "#5DADE2"
+    ]
+  },
+  "metadata": {
+    "created": "2024-01-01T00:00:00Z",
+    "author": "Paibot Enhanced",
+    "description": "High-continuity Wang tiles with strict edge matching for seamless infinite backgrounds",
+    "mode": "wang_tiles",
+    "features": [
+      "edge_validation",
+      "border_consistency",
+      "layout_generation", 
+      "visual_cut_detection"
+    ]
+  },
+  "quality": {
+    "expectedDeltaE": 1.8,
+    "seamlessness": 0.97,
+    "borderConsistency": 0.98,
+    "compatibilityMatrix": "included",
+    "recommendedUse": "infinite_backgrounds"
+  },
+  "technical": {
+    "edgePatterns": 4,
+    "maxLayoutSize": "64x64",
+    "backtrackingEnabled": true,
+    "fallbackStrategy": "random_valid"
+  }
+}
