@@ -1,8 +1,7 @@
 #include <ui/PaibotButtonBar.hpp>
 #include <manager/BrushManager.hpp>
+#include <manager/ToolManager.hpp>
 #include <util/BrushDrawer.hpp>
-#include <util/LineBrushDrawer.hpp>
-#include <util/GradientBrushDrawer.hpp>
 #include <util/StructureOptimizer.hpp>
 #include <util/BackgroundGenerator.hpp>
 #include <Geode/ui/GeodeUI.hpp>
@@ -30,71 +29,65 @@ bool PaibotButtonBar::init(EditorUI* editorUI) {
     auto rows = GameManager::get()->getIntGameVariable("0050");
     auto cols = GameManager::get()->getIntGameVariable("0049");
 
+    auto toolManager = ToolManager::get();
+    auto makeToolCallback = [](ToolKind kind) {
+        return [kind](MenuItemTogglerExtra* sender) {
+            if (!sender) {
+                return;
+            }
+            auto manager = ToolManager::get();
+            if (!manager) {
+                return;
+            }
+            if (sender->isToggled()) {
+                manager->switchTool(kind);
+            } else {
+                manager->clearActiveTool();
+            }
+        };
+    };
+
     // Line Tool (matching Allium's pattern)
     m_lineToggle = this->addDefaultToggle(
         "GJ_button_01.png", "line-toggle",
-        [=, this](CCMenuItemToggler* sender) {
-            if (!sender->isToggled()) return;
-            m_brushDrawer = LineBrushDrawer::create();
-            LevelEditorLayer::get()->m_objectLayer->addChild(m_brushDrawer);
-            m_brushDrawer->setID("line-drawer");
-        }
+        makeToolCallback(ToolKind::Line)
     );
+    toolManager->registerToggle(ToolKind::Line, m_lineToggle);
 
     // Curve Tool
     m_curveToggle = this->addDefaultToggle(
         "GJ_button_01.png", "curve-toggle",
-        [=, this](CCMenuItemToggler* sender) {
-            if (!sender->isToggled()) return;
-            m_brushDrawer = BrushDrawer::create(); // TODO: Create CurveBrushDrawer
-            LevelEditorLayer::get()->m_objectLayer->addChild(m_brushDrawer);
-            m_brushDrawer->setID("brush-drawer");
-        }
+        makeToolCallback(ToolKind::Curve)
     );
+    toolManager->registerToggle(ToolKind::Curve, m_curveToggle);
 
     // Freeform Tool
     m_freeToggle = this->addDefaultToggle(
         "GJ_button_01.png", "free-toggle",
-        [=, this](CCMenuItemToggler* sender) {
-            if (!sender->isToggled()) return;
-            m_brushDrawer = BrushDrawer::create(); // TODO: Create FreeBrushDrawer
-            LevelEditorLayer::get()->m_objectLayer->addChild(m_brushDrawer);
-            m_brushDrawer->setID("brush-drawer");
-        }
+        makeToolCallback(ToolKind::Freeform)
     );
+    toolManager->registerToggle(ToolKind::Freeform, m_freeToggle);
 
     // Polygon Tool
     m_polygonToggle = this->addDefaultToggle(
         "GJ_button_01.png", "polygon-toggle",
-        [=, this](CCMenuItemToggler* sender) {
-            if (!sender->isToggled()) return;
-            m_brushDrawer = BrushDrawer::create(); // TODO: Create PolygonBrushDrawer
-            LevelEditorLayer::get()->m_objectLayer->addChild(m_brushDrawer);
-            m_brushDrawer->setID("brush-drawer");
-        }
+        makeToolCallback(ToolKind::Polygon)
     );
+    toolManager->registerToggle(ToolKind::Polygon, m_polygonToggle);
 
     // Text Tool
     m_textToggle = this->addDefaultToggle(
         "GJ_button_01.png", "text-toggle",
-        [=, this](CCMenuItemToggler* sender) {
-            if (!sender->isToggled()) return;
-            m_brushDrawer = BrushDrawer::create(); // TODO: Create TextBrushDrawer
-            LevelEditorLayer::get()->m_objectLayer->addChild(m_brushDrawer);
-            m_brushDrawer->setID("brush-drawer");
-        }
+        makeToolCallback(ToolKind::Text)
     );
+    toolManager->registerToggle(ToolKind::Text, m_textToggle);
 
     // NEW: Gradient Bucket Tool
     m_gradientBucketToggle = this->addDefaultToggle(
         "GJ_button_01.png", "gradient-bucket-toggle",
-        [=, this](CCMenuItemToggler* sender) {
-            if (!sender->isToggled()) return;
-            m_brushDrawer = GradientBrushDrawer::create();
-            LevelEditorLayer::get()->m_objectLayer->addChild(m_brushDrawer);
-            m_brushDrawer->setID("gradient-drawer");
-        }
+        makeToolCallback(ToolKind::Gradient)
     );
+    toolManager->registerToggle(ToolKind::Gradient, m_gradientBucketToggle);
 
     // NEW: Structure Optimizer Button
     auto optimizerButton = this->addDefaultButton(
@@ -134,10 +127,12 @@ bool PaibotButtonBar::init(EditorUI* editorUI) {
     // Finalize Button
     auto finalizeButton = this->addDefaultButton(
         "GJ_button_01.png", "finalize-button",
-        [this](auto sender) {
-            if (m_brushDrawer) {
-                m_brushDrawer->clearOverlay();
-                m_brushDrawer->updateLine();
+        [](auto) {
+            if (auto manager = ToolManager::get()) {
+                if (auto brush = manager->getActiveBrush()) {
+                    brush->clearOverlay();
+                    brush->updateLine();
+                }
             }
         }
     );
@@ -148,25 +143,21 @@ bool PaibotButtonBar::init(EditorUI* editorUI) {
     return true;
 }
 
-void PaibotButtonBar::resetToggles(CCObject* sender) {
-        auto s = dynamic_cast<MenuItemTogglerExtra*>(sender);
-        auto quietOff = [s](MenuItemTogglerExtra* t) {
-            if (t && t != s) {
-                t->toggleSilent(false);
-            }
-        };
-        quietOff(m_lineToggle);
-        quietOff(m_curveToggle);
-        quietOff(m_freeToggle);
-        quietOff(m_polygonToggle);
-        quietOff(m_textToggle);
-        quietOff(m_gradientBucketToggle);
-    
-    if (m_brushDrawer) {
-        m_brushDrawer->clearOverlay();
-        m_brushDrawer->updateLine();
-        m_brushDrawer->removeFromParent();
-        m_brushDrawer = nullptr;
+PaibotButtonBar::~PaibotButtonBar() {
+    if (auto manager = ToolManager::get()) {
+        manager->clearActiveTool();
+        manager->unregisterToggle(m_lineToggle);
+        manager->unregisterToggle(m_curveToggle);
+        manager->unregisterToggle(m_freeToggle);
+        manager->unregisterToggle(m_polygonToggle);
+        manager->unregisterToggle(m_textToggle);
+        manager->unregisterToggle(m_gradientBucketToggle);
+    }
+}
+
+void PaibotButtonBar::resetToggles(CCObject*) {
+    if (auto manager = ToolManager::get()) {
+        manager->clearActiveTool();
     }
     EditorUI::get()->deselectAll();
 }
@@ -176,7 +167,10 @@ EditButtonBar* PaibotButtonBar::getButtonBar() const {
 }
 
 BrushDrawer* PaibotButtonBar::getBrushDrawer() const {
-    return m_brushDrawer;
+    if (auto manager = ToolManager::get()) {
+        return manager->getActiveBrush();
+    }
+    return nullptr;
 }
 
 CCMenuItemSpriteExtra* PaibotButtonBar::addDefaultButton(
@@ -267,17 +261,8 @@ MenuItemTogglerExtra* PaibotButtonBar::addToggle(
 }
 
 void PaibotButtonBar::activateGradientBucket() {
-    if (m_gradientBucketToggle) {
-        m_gradientBucketToggle->toggle(true);
-        if (m_gradientBucketToggle->isToggled() && m_brushDrawer == nullptr) {
-            // Simulate the callback behavior used in init
-            this->resetToggles(m_gradientBucketToggle);
-            m_brushDrawer = GradientBrushDrawer::create();
-            if (m_brushDrawer) {
-                LevelEditorLayer::get()->m_objectLayer->addChild(m_brushDrawer);
-                m_brushDrawer->setID("gradient-drawer");
-            }
-        }
+    if (auto manager = ToolManager::get()) {
+        manager->switchTool(ToolKind::Gradient);
     }
 }
 

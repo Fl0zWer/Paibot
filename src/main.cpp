@@ -2,6 +2,7 @@
 #include <Geode/modify/EditorUI.hpp>
 #include <ui/PaibotButtonBar.hpp>
 #include <manager/BrushManager.hpp>
+#include <manager/ToolManager.hpp>
 #include <util/BrushDrawer.hpp>
 
 using namespace geode::prelude;
@@ -51,8 +52,12 @@ class $modify(PaibotEditorUI, EditorUI) {
     }
 
     void onPlaytest(cocos2d::CCObject* sender) {
-        if (m_fields->m_paibotButtonBar && m_fields->m_paibotButtonBar->getBrushDrawer()) {
-            m_fields->m_paibotButtonBar->getBrushDrawer()->clearOverlay();
+        if (auto manager = ToolManager::get()) {
+            if (auto brush = manager->getActiveBrush()) {
+                brush->clearOverlay();
+            }
+        }
+        if (m_fields->m_paibotButtonBar) {
             m_fields->m_paibotButtonBar->resetToggles(nullptr);
         }
         EditorUI::onPlaytest(sender);

@@ -12,31 +12,29 @@ namespace paibot {
         cocos2d::CCArray* m_buttons = nullptr;
 
         // Tool toggles (matching Allium's pattern)
-    MenuItemTogglerExtra* m_lineToggle = nullptr;
-    MenuItemTogglerExtra* m_curveToggle = nullptr;
-    MenuItemTogglerExtra* m_freeToggle = nullptr;
-    MenuItemTogglerExtra* m_polygonToggle = nullptr;
-    MenuItemTogglerExtra* m_textToggle = nullptr;
-        
+        MenuItemTogglerExtra* m_lineToggle = nullptr;
+        MenuItemTogglerExtra* m_curveToggle = nullptr;
+        MenuItemTogglerExtra* m_freeToggle = nullptr;
+        MenuItemTogglerExtra* m_polygonToggle = nullptr;
+        MenuItemTogglerExtra* m_textToggle = nullptr;
+
         // New feature toggles
-    MenuItemTogglerExtra* m_gradientBucketToggle = nullptr;
-    MenuItemTogglerExtra* m_optimizerToggle = nullptr;
-    MenuItemTogglerExtra* m_backgroundToggle = nullptr;
-    MenuItemTogglerExtra* m_panToggle = nullptr;
-        
-        BrushDrawer* m_brushDrawer = nullptr;
+        MenuItemTogglerExtra* m_gradientBucketToggle = nullptr;
+        MenuItemTogglerExtra* m_optimizerToggle = nullptr;
+        MenuItemTogglerExtra* m_backgroundToggle = nullptr;
+        MenuItemTogglerExtra* m_panToggle = nullptr;
 
     public:
         static PaibotButtonBar* create(EditorUI* editorUI);
         bool init(EditorUI* editorUI);
+        ~PaibotButtonBar() override;
 
-    void resetToggles(cocos2d::CCObject* sender);
-    void onToggle(cocos2d::CCObject* sender);
+        void resetToggles(cocos2d::CCObject* sender);
         EditButtonBar* getButtonBar() const;
         BrushDrawer* getBrushDrawer() const;
-    // Specific helpers
-    void activateGradientBucket();
-    MenuItemTogglerExtra* getGradientBucketToggle() const { return m_gradientBucketToggle; }
+        // Specific helpers
+        void activateGradientBucket();
+        MenuItemTogglerExtra* getGradientBucketToggle() const { return m_gradientBucketToggle; }
 
         // Button creation helpers (matching Allium's API)
         CCMenuItemSpriteExtra* addButton(
