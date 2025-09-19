@@ -1,6 +1,7 @@
 #include <ui/PaibotButtonBar.hpp>
 #include <manager/BrushManager.hpp>
 #include <util/BrushDrawer.hpp>
+#include <util/LineBrushDrawer.hpp>
 #include <util/GradientBrushDrawer.hpp>
 #include <util/StructureOptimizer.hpp>
 #include <util/BackgroundGenerator.hpp>
@@ -34,9 +35,9 @@ bool PaibotButtonBar::init(EditorUI* editorUI) {
         [=, this](auto sender) {
             this->resetToggles(sender);
             if (sender->isToggled()) return;
-            m_brushDrawer = BrushDrawer::create();
+            m_brushDrawer = LineBrushDrawer::create();
             LevelEditorLayer::get()->m_objectLayer->addChild(m_brushDrawer);
-            m_brushDrawer->setID("brush-drawer");
+            m_brushDrawer->setID("line-drawer");
         }
     );
 

@@ -46,12 +46,12 @@ add_library(${PROJECT_NAME} SHARED
     
     # Utility classes - drawing tools
     src/util/BrushDrawer.cpp
+    src/util/LineBrushDrawer.cpp
     src/util/GradientBrushDrawer.cpp
     src/util/StructureOptimizer.cpp
     src/util/BackgroundGenerator.cpp
     
     # TODO: Add when implemented
-    # src/util/LineBrushDrawer.cpp
     # src/util/CurveBrushDrawer.cpp
     # src/util/FreeBrushDrawer.cpp
     # src/util/PolygonBrushDrawer.cpp
