@@ -5,9 +5,15 @@
   "id": "paibot.allium-inspired",
   "name": "Paibot Drawing Tool",
   "developer": "Paibot",
-  "description": "Allium-inspired editor drawing tools",
+  "description": "Allium-inspired editor drawing tools with advanced features",
   "tags": ["editor", "enhancement", "utility"],
+  "min-game-version": "2.207",
+  "supported_game_builds": ["2.207", "2.2074"],
   "dependencies": {},
+  "integrity": {
+    "manifest": "resources/manifest.json"
+  },
+  "settings_version": 1,
   "settings": {
     "brush-line-width": {
       "type": "float",
@@ -15,7 +21,7 @@
       "min": 0.5,
       "max": 30,
       "name": "Brush Width",
-      "description": "Brush thickness"
+      "description": "Brush thickness for drawing tools"
     },
     "brush-color-id": {
       "type": "int",
@@ -23,7 +29,7 @@
       "min": 1,
       "max": 1020,
       "name": "Brush Color ID",
-      "description": "Color ID"
+      "description": "Geometry Dash color ID for brush"
     },
     "gradient-steps": {
       "type": "int",
@@ -31,7 +37,15 @@
       "min": 8,
       "max": 64,
       "name": "Gradient Steps",
-      "description": "Step count"
+      "description": "Number of interpolation steps for gradients"
+    },
+    "gradient-seed": {
+      "type": "int",
+      "default": 42,
+      "min": 0,
+      "max": 999999,
+      "name": "Gradient Seed",
+      "description": "Deterministic seed for gradient generation"
     },
     "optimizer-target-reduction": {
       "type": "float",
@@ -39,13 +53,37 @@
       "min": 0.1,
       "max": 0.9,
       "name": "Target Reduction",
-      "description": "Structure target"
+      "description": "Structure optimizer target reduction percentage"
+    },
+    "optimizer-geometry-tolerance": {
+      "type": "float",
+      "default": 0.1,
+      "min": 0.01,
+      "max": 5.0,
+      "name": "Geometry Tolerance",
+      "description": "Geometric tolerance for object merging"
+    },
+    "optimizer-snap-grid": {
+      "type": "float",
+      "default": 15.0,
+      "min": 1.0,
+      "max": 30.0,
+      "name": "Snap Grid Size",
+      "description": "Grid snapping tolerance for optimization"
     },
     "seamless-tile-size": {
       "type": "int",
       "default": 1024,
+      "options": [512, 1024, 2048],
       "name": "Tile Size",
-      "description": "Background tile size"
+      "description": "Background tile size in pixels"
+    },
+    "bg-size": {
+      "type": "int",
+      "default": 1024,
+      "options": [512, 1024, 2048],
+      "name": "Background Size",
+      "description": "Generated background size"
     },
     "draw-object-id": {
       "type": "int",
@@ -54,6 +92,18 @@
       "max": 9999,
       "name": "Draw Object ID",
       "description": "Object ID used when creating editor objects"
+    },
+    "safe-mode": {
+      "type": "bool",
+      "default": false,
+      "name": "Safe Mode",
+      "description": "Disable destructive operations, preview only"
+    },
+    "enable-integrity-checks": {
+      "type": "bool",
+      "default": true,
+      "name": "Enable Integrity Checks",
+      "description": "Verify resource integrity on load"
     }
   }
 }

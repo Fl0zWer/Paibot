@@ -1,0 +1,114 @@
+name: Build Paibot Mod
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [Win64]
+        config: [Release, Debug]
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Setup CMake
+      uses: get-cmake@latest
+    
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v2
+    
+    - name: Configure CMake
+      run: |
+        cmake -S . -B build -DGEODE_TARGET_PLATFORM=${{ matrix.arch }} -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+    
+    - name: Build
+      run: |
+        cmake --build build --config ${{ matrix.config }} --parallel
+    
+    - name: Validate mod.json
+      run: |
+        python -m json.tool mod.json > /dev/null
+    
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: paibot-windows-${{ matrix.arch }}-${{ matrix.config }}
+        path: |
+          build/**/*.dll
+          build/**/*.pdb
+        retention-days: 30
+
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config: [Release, Debug]
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake clang ninja-build
+    
+    - name: Configure CMake
+      run: |
+        cmake -S . -B build -DGEODE_TARGET_PLATFORM=Linux -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DCMAKE_CXX_COMPILER=clang++
+    
+    - name: Build
+      run: |
+        cmake --build build --config ${{ matrix.config }} --parallel
+    
+    - name: Validate mod.json
+      run: |
+        python3 -m json.tool mod.json > /dev/null
+    
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: paibot-linux-${{ matrix.config }}
+        path: |
+          build/**/*.so
+        retention-days: 30
+
+  integrity-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Validate mod.json Schema
+      run: |
+        # Check basic JSON validity
+        python3 -m json.tool mod.json > /dev/null
+        
+        # Check required fields
+        python3 -c "
+        import json
+        with open('mod.json') as f:
+            data = json.load(f)
+        required = ['id', 'name', 'version', 'min-game-version', 'geode', 'dependencies']
+        missing = [field for field in required if field not in data]
+        if missing:
+            raise ValueError(f'Missing required fields: {missing}')
+        print('mod.json validation passed')
+        "
+    
+    - name: Check Resource Integrity
+      run: |
+        if [ -f "resources/manifest.json" ]; then
+          python3 -m json.tool resources/manifest.json > /dev/null
+          echo "Resource manifest validation passed"
+        else
+          echo "Warning: No resource manifest found"
+        fi
