@@ -67,6 +67,7 @@ add_library(${PROJECT_NAME} SHARED
     src/util/GradientBrushDrawer.cpp
     src/util/StructureOptimizer.cpp
     src/util/BackgroundGenerator.cpp
+    src/util/IntegrityLogger.cpp
     
     # TODO: Add when implemented
     # src/util/CurveBrushDrawer.cpp
