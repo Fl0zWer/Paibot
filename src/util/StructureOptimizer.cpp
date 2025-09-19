@@ -1,5 +1,6 @@
 #include <util/StructureOptimizer.hpp>
 #include <manager/BrushManager.hpp>
+#include <algorithm>
 
 using namespace paibot;
 using namespace geode::prelude;
@@ -55,9 +56,15 @@ void StructureOptimizer::setPreserveOptions(bool groupIDs, bool zOrder, bool cha
 OptimizationStats StructureOptimizer::optimizeSelection(const std::vector<GameObject*>& objects) {
     // Placeholder implementation
     OptimizationStats stats;
+    float targetReduction = 0.3f;
+    if (auto* brushManager = BrushManager::get()) {
+        // Pull the latest slider value every time we run so the optimizer stays in sync with the UI.
+        targetReduction = std::clamp(brushManager->getOptimizerTargetReduction(), 0.1f, 0.9f);
+    }
+
     stats.objectsBefore = objects.size();
-    stats.objectsAfter = static_cast<int>(objects.size() * (1.0f - m_optimizerTargetReduction));
-    stats.reductionPercentage = m_optimizerTargetReduction * 100.0f;
+    stats.objectsAfter = static_cast<int>(objects.size() * (1.0f - targetReduction));
+    stats.reductionPercentage = targetReduction * 100.0f;
     stats.deltaE = 0.5f; // Simulated low visual difference
     stats.processingTime = 1.0f;
     

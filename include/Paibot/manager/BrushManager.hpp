@@ -24,7 +24,7 @@ namespace paibot {
         int m_gradientSteps = 32;
         float m_optimizerTargetReduction = 0.6f;
         int m_seamlessTileSize = 1024;
-        
+
     public:
         static BrushManager* get();
         static void destroy();
@@ -35,7 +35,11 @@ namespace paibot {
         // Settings synchronization
         void loadSettings();
         void saveSettings();
-        
+
+        // Optimizer configuration helpers
+        void setOptimizerTargetReduction(float reduction);
+        float getOptimizerTargetReduction() const;
+
         // Input state management
         void updateKeyboardState();
         bool isShiftPressed() const;
