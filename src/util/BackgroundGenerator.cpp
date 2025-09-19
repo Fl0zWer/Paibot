@@ -1,8 +1,12 @@
 #include <util/BackgroundGenerator.hpp>
 #include <manager/BrushManager.hpp>
+#include <util/IntegrityLogger.hpp>
 #include <algorithm>
 #include <cmath>
 #include <random>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 
 using namespace paibot;
 using namespace geode::prelude;
@@ -29,12 +33,29 @@ bool BackgroundGenerator::init() {
     m_settings.octaves = 4;
     m_settings.persistence = 0.5f;
     m_settings.lacunarity = 2.0f;
+    m_settings.version = 1;
+    
+    // Initialize integrity tracking
+    m_generationValid = true;
     
     return true;
 }
 
 void BackgroundGenerator::setSettings(const BackgroundSettings& settings) {
-    m_settings = settings;
+    // Validate settings before applying
+    if (!validateSettings()) {
+        IntegrityLogger::get()->logError("BackgroundGenerator", "Invalid settings provided");
+        return;
+    }
+    
+    // Migrate settings if needed
+    BackgroundSettings migratedSettings = settings;
+    if (!validatePresetVersion(migratedSettings)) {
+        migratePreset(migratedSettings, settings.version, 1);
+    }
+    
+    m_settings = migratedSettings;
+    IntegrityLogger::get()->logOperationStart(generateOperationId(), "SettingsUpdate");
 }
 
 BackgroundSettings BackgroundGenerator::getSettings() const {
@@ -42,33 +63,71 @@ BackgroundSettings BackgroundGenerator::getSettings() const {
 }
 
 TileSet BackgroundGenerator::generateBackground() {
+    m_currentOperationId = generateOperationId();
+    IntegrityLogger::get()->logOperationStart(m_currentOperationId, "BackgroundGeneration");
+    
+    if (!validateSettings()) {
+        IntegrityLogger::get()->logError("BackgroundGenerator", "Cannot generate: invalid settings");
+        return TileSet{}; // Return empty tile set
+    }
+    
     TileSet tileSet;
 
-    switch (m_settings.type) {
-        case BackgroundType::SeamlessFromImage:
-            if (!m_settings.sourceImagePath.empty()) {
-                tileSet = createSeamlessFromImage(m_settings.sourceImagePath);
-            }
-            break;
-            
-        case BackgroundType::TextureSynthesis:
-            // Placeholder - would need sample image
-            log::info("Texture synthesis not yet implemented");
-            break;
-            
-        case BackgroundType::Procedural:
-            tileSet = generateProcedural();
-            break;
-            
-        case BackgroundType::WangTiles:
-            tileSet = generateWangTiles();
-            break;
-    }
+    try {
+        switch (m_settings.type) {
+            case BackgroundType::SeamlessFromImage:
+                if (!m_settings.sourceImagePath.empty()) {
+                    tileSet = createSeamlessFromImage(m_settings.sourceImagePath);
+                } else {
+                    log::error("SeamlessFromImage generation requires source image path");
+                }
+                break;
+                
+            case BackgroundType::TextureSynthesis:
+                // Placeholder - would need sample image
+                log::info("Texture synthesis not yet implemented");
+                break;
+                
+            case BackgroundType::Procedural:
+                tileSet = generateProcedural();
+                break;
+                
+            case BackgroundType::WangTiles:
+                tileSet = generateWangTiles();
+                break;
+        }
 
-    if (!tileSet.tiles.empty()) {
-        tileSet.deltaE = calculateSeamlessness(tileSet.tiles.front());
-    } else {
-        tileSet.deltaE = 0.0f;
+        if (!tileSet.tiles.empty()) {
+            tileSet.deltaE = calculateSeamlessness(tileSet.tiles.front());
+        } else {
+            tileSet.deltaE = 0.0f;
+        }
+        
+        // Validate the generated tile set
+        if (!validateTileSet(tileSet)) {
+            IntegrityLogger::get()->logError("BackgroundGenerator", "Generated tile set validation failed");
+            return TileSet{}; // Return empty tile set
+        }
+        
+        // Store as last valid if generation succeeded
+        if (tileSet.isValid()) {
+            m_lastValidTileSet = tileSet;
+            m_generationValid = true;
+            IntegrityLogger::get()->logOperationEnd(m_currentOperationId, true, 
+                "Background generation completed successfully");
+        } else {
+            m_generationValid = false;
+            IntegrityLogger::get()->logOperationEnd(m_currentOperationId, false, 
+                "Generated empty or invalid tile set");
+        }
+        
+    } catch (const std::exception& e) {
+        IntegrityLogger::get()->logError("BackgroundGenerator", 
+            "Background generation failed: " + std::string(e.what()));
+        m_generationValid = false;
+        IntegrityLogger::get()->logOperationEnd(m_currentOperationId, false, 
+            "Exception during generation");
+        return TileSet{};
     }
 
     m_currentTileSet = tileSet;
@@ -386,4 +445,187 @@ std::string BackgroundGenerator::generateExportJSON(const TileSet& tileSet) {
         static_cast<int>(m_settings.type),
         m_settings.noiseSeed
     );
+}
+
+bool BackgroundGenerator::validateSettings() const {
+    if (m_settings.tileSize <= 0 || m_settings.tileSize > 4096) {
+        return false;
+    }
+    
+    if (m_settings.continuity < 0.0f || m_settings.continuity > 1.0f) {
+        return false;
+    }
+    
+    if (m_settings.variety < 0.0f || m_settings.variety > 1.0f) {
+        return false;
+    }
+    
+    if (m_settings.octaves < 1 || m_settings.octaves > 8) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool BackgroundGenerator::validateTileSet(const TileSet& tileSet) {
+    return validateNonEmptyTileSet(tileSet);
+}
+
+bool BackgroundGenerator::validateNonEmptyTileSet(const TileSet& tileSet) {
+    if (tileSet.isEmpty()) {
+        IntegrityLogger::get()->logError("BackgroundGenerator", "Tile set is empty");
+        return false;
+    }
+    
+    if (tileSet.tileSize <= 0) {
+        IntegrityLogger::get()->logError("BackgroundGenerator", "Invalid tile size");
+        return false;
+    }
+    
+    // Additional validation for tile data
+    for (const auto* tile : tileSet.tiles) {
+        if (!tile) {
+            IntegrityLogger::get()->logError("BackgroundGenerator", "Null tile in set");
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+WangTileValidation BackgroundGenerator::validateWangTileBorders(const TileSet& tileSet) {
+    WangTileValidation validation;
+    
+    if (tileSet.isEmpty()) {
+        validation.hasValidBorders = false;
+        validation.errorDetails = "Empty tile set";
+        return validation;
+    }
+    
+    // Check edge compatibility for Wang tiles
+    float totalConsistency = 0.0f;
+    int checks = 0;
+    
+    for (size_t i = 0; i < tileSet.tiles.size(); ++i) {
+        for (size_t j = i + 1; j < tileSet.tiles.size(); ++j) {
+            // Check all four edges between tiles
+            for (int edge = 0; edge < 4; ++edge) {
+                bool compatible = checkEdgeCompatibility(tileSet.tiles[i], tileSet.tiles[j], edge);
+                totalConsistency += compatible ? 1.0f : 0.0f;
+                checks++;
+                
+                if (!compatible) {
+                    validation.hasVisualCuts = true;
+                }
+            }
+        }
+    }
+    
+    if (checks > 0) {
+        validation.borderConsistency = totalConsistency / checks;
+    }
+    
+    validation.hasValidBorders = validation.borderConsistency > 0.8f && !validation.hasVisualCuts;
+    
+    if (!validation.hasValidBorders) {
+        validation.errorDetails = "Border inconsistency: " + std::to_string(validation.borderConsistency);
+        IntegrityLogger::get()->logWarning("BackgroundGenerator", validation.errorDetails);
+    }
+    
+    return validation;
+}
+
+void BackgroundGenerator::revertToLastValid() {
+    if (m_lastValidTileSet.isValid()) {
+        log::info("Reverting to last valid tile set");
+        m_currentTileSet = m_lastValidTileSet;
+        m_generationValid = true;
+        IntegrityLogger::get()->logOperationEnd(m_currentOperationId, true, "Reverted to valid state");
+    } else {
+        log::warn("No valid tile set to revert to");
+    }
+}
+
+std::unique_ptr<cocos2d::CCImage> BackgroundGenerator::generatePreviewInMemory() {
+    // Generate a small preview image in memory without creating sprites
+    // This prevents memory issues for large tile sets
+    
+    clearPreviewMemory(); // Clear any existing preview memory
+    
+    if (m_currentTileSet.isEmpty()) {
+        return nullptr;
+    }
+    
+    // Create a small preview image (e.g., 256x256)
+    const int previewSize = 256;
+    std::vector<unsigned char> pixels(previewSize * previewSize * 4);
+    
+    // Fill with a simple pattern representing the tile set
+    for (int y = 0; y < previewSize; ++y) {
+        for (int x = 0; x < previewSize; ++x) {
+            // Create a checkerboard pattern with tile-based colors
+            int tileX = (x * 3) / previewSize;
+            int tileY = (y * 3) / previewSize;
+            int tileIndex = (tileY * 3 + tileX) % std::max(1, static_cast<int>(m_currentTileSet.tiles.size()));
+            
+            unsigned char r = 128 + (tileIndex * 20) % 128;
+            unsigned char g = 100 + (tileIndex * 15) % 128;
+            unsigned char b = 150 + (tileIndex * 25) % 128;
+            
+            size_t idx = static_cast<size_t>(y) * previewSize * 4 + static_cast<size_t>(x) * 4;
+            pixels[idx + 0] = r;
+            pixels[idx + 1] = g;
+            pixels[idx + 2] = b;
+            pixels[idx + 3] = 255;
+        }
+    }
+    
+    auto previewImage = std::make_unique<cocos2d::CCImage>();
+    if (!previewImage->initWithRawData(pixels.data(), static_cast<int>(pixels.size()), 
+                                      previewSize, previewSize, 8, true)) {
+        return nullptr;
+    }
+    
+    log::info("Generated preview image in memory: {}x{}", previewSize, previewSize);
+    return previewImage;
+}
+
+void BackgroundGenerator::clearPreviewMemory() {
+    m_previewImages.clear();
+    log::debug("Cleared background generator preview memory");
+}
+
+void BackgroundGenerator::migratePreset(BackgroundSettings& settings, int fromVersion, int toVersion) {
+    if (fromVersion < 1 && toVersion >= 1) {
+        // Migration from legacy format
+        log::info("Migrating background preset from version {} to {}", fromVersion, toVersion);
+        
+        // Ensure valid defaults for new fields
+        if (settings.version <= 0) {
+            settings.version = 1;
+        }
+        
+        // Clamp values to valid ranges
+        settings.tileSize = std::clamp(settings.tileSize, 256, 2048);
+        settings.continuity = std::clamp(settings.continuity, 0.0f, 1.0f);
+        settings.variety = std::clamp(settings.variety, 0.0f, 1.0f);
+    }
+    
+    settings.version = toVersion;
+}
+
+bool BackgroundGenerator::validatePresetVersion(const BackgroundSettings& settings) {
+    return settings.version >= 1; // Current version is 1
+}
+
+std::string BackgroundGenerator::generateOperationId() const {
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch()) % 1000;
+    
+    std::stringstream ss;
+    ss << "BG_" << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S") 
+       << "_" << std::setfill('0') << std::setw(3) << ms.count();
+    return ss.str();
 }

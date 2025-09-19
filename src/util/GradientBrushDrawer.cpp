@@ -1,9 +1,13 @@
 #include <util/GradientBrushDrawer.hpp>
 #include <manager/BrushManager.hpp>
+#include <util/IntegrityLogger.hpp>
 #include <cmath>
 #include <algorithm>
 #include <limits>
 #include <numbers>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 
 using namespace paibot;
 using namespace geode::prelude;
@@ -29,6 +33,16 @@ bool GradientBrushDrawer::init() {
     clearGradientStops();
     addGradientStop(0.0f, {255, 0, 0}, 1.0f);    // Red
     addGradientStop(1.0f, {0, 0, 255}, 1.0f);    // Blue
+    
+    // Initialize cache
+    m_cache.isValid = false;
+    m_lastValidCache.isValid = false;
+    m_interpolationValid = true;
+    
+    // Get seed from BrushManager
+    if (auto brushManager = BrushManager::get()) {
+        m_currentSeed = brushManager->getSavedValue<int>("gradient-seed", 42);
+    }
     
     return true;
 }
@@ -312,23 +326,71 @@ void GradientBrushDrawer::showPreview() {
         log::warn("Gradient preview aborted: no fill area computed");
         return;
     }
+    
+    // Validate gradient configuration before showing preview
+    if (!validateGradientStops()) {
+        log::error("Cannot show preview: invalid gradient configuration");
+        return;
+    }
+    
+    // Update cache with current parameters
+    updateCache();
+    
+    // Store current state as last valid if interpolation succeeds
+    if (validateHSVInterpolation()) {
+        m_lastValidCache = m_cache;
+        IntegrityLogger::get()->logOperationEnd(m_cache.operationId, true, "Preview generated successfully");
+    } else {
+        IntegrityLogger::get()->logOperationEnd(m_cache.operationId, false, "HSV interpolation validation failed");
+        return;
+    }
+    
     m_isPreviewMode = true;
+    m_hasPreview = true;
     generateGradientObjects();
+    
+    log::info("Gradient preview shown with {} stops, seed {}", m_gradientStops.size(), m_currentSeed);
 }
 
 void GradientBrushDrawer::hidePreview() {
     m_isPreviewMode = false;
+    m_hasPreview = false;
     m_pendingApply = false;
     clearOverlay();
+    
+    if (m_cache.isValid) {
+        IntegrityLogger::get()->logOperationEnd(m_cache.operationId, false, "Preview cancelled");
+    }
 }
 
 void GradientBrushDrawer::applyGradient() {
-    if (!m_isPreviewMode) return;
+    if (!m_isPreviewMode || !m_hasPreview) {
+        log::warn("Cannot apply gradient: no valid preview available");
+        return;
+    }
+    
+    if (!hasValidPreview()) {
+        log::error("Cannot apply gradient: preview validation failed");
+        return;
+    }
+    
+    // Check safe mode
+    if (auto brushManager = BrushManager::get()) {
+        if (brushManager->isSafeMode()) {
+            log::warn("Gradient application blocked by safe mode");
+            return;
+        }
+    }
     
     // In real implementation, create actual GameObject instances
     // For now, just log the action
-    log::info("Applying gradient with {} stops to {} area points", 
-              m_gradientStops.size(), m_fillArea.size());
+    log::info("Applying gradient with {} stops to {} area points (operation: {})", 
+              m_gradientStops.size(), m_fillArea.size(), m_cache.operationId);
+    
+    if (m_cache.isValid) {
+        IntegrityLogger::get()->logOperationEnd(m_cache.operationId, true, 
+            "Gradient applied successfully");
+    }
     
     hidePreview();
     m_pendingApply = false;
@@ -437,4 +499,231 @@ void GradientBrushDrawer::clampFillToNearbyObjects(float maxDistance) {
             point.y = m_startPoint.y + offset.y * scale;
         }
     }
+}
+
+bool GradientBrushDrawer::validateGradientStops() {
+    if (m_gradientStops.empty()) {
+        IntegrityLogger::get()->logError("GradientBrush", "No gradient stops defined");
+        return false;
+    }
+    
+    if (m_gradientStops.size() < 2) {
+        IntegrityLogger::get()->logError("GradientBrush", "Need at least 2 gradient stops");
+        return false;
+    }
+    
+    // Validate positions are in [0,1] range and sorted
+    for (size_t i = 0; i < m_gradientStops.size(); ++i) {
+        const auto& stop = m_gradientStops[i];
+        if (stop.position < 0.0f || stop.position > 1.0f) {
+            IntegrityLogger::get()->logError("GradientBrush", "Invalid gradient stop position");
+            return false;
+        }
+        
+        if (i > 0 && stop.position < m_gradientStops[i-1].position) {
+            IntegrityLogger::get()->logError("GradientBrush", "Gradient stops not in order");
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+void GradientBrushDrawer::updateCache() {
+    m_cache.operationId = generateOperationId();
+    m_cache.seed = m_currentSeed;
+    m_cache.type = m_gradientType;
+    m_cache.stops = m_gradientStops;
+    m_cache.startPoint = m_startPoint;
+    m_cache.endPoint = m_endPoint;
+    m_cache.radius = m_radius;
+    m_cache.result = m_fillArea;
+    m_cache.isValid = true;
+    
+    IntegrityLogger::get()->logOperationStart(m_cache.operationId, "GradientGeneration");
+}
+
+bool GradientBrushDrawer::isCacheValid() const {
+    return m_cache.isValid && 
+           m_cache.seed == m_currentSeed &&
+           m_cache.type == m_gradientType &&
+           m_cache.stops.size() == m_gradientStops.size();
+}
+
+void GradientBrushDrawer::invalidateCache() {
+    m_cache.isValid = false;
+    IntegrityLogger::get()->logWarning("GradientBrush", "Cache invalidated");
+}
+
+cocos2d::ccColor3B GradientBrushDrawer::interpolateColorHSV(float t) {
+    if (!validateHSVInterpolation()) {
+        log::error("HSV interpolation validation failed, reverting to last valid");
+        revertToLastValid();
+        return {128, 128, 128}; // Gray fallback
+    }
+    
+    try {
+        if (m_gradientStops.empty()) {
+            return {0, 0, 0};
+        }
+        
+        t = std::clamp(t, 0.0f, 1.0f);
+        
+        // Find the two stops to interpolate between
+        size_t i = 0;
+        while (i < m_gradientStops.size() - 1 && m_gradientStops[i + 1].position < t) {
+            ++i;
+        }
+        
+        if (i >= m_gradientStops.size() - 1) {
+            return m_gradientStops.back().color;
+        }
+        
+        const auto& stop1 = m_gradientStops[i];
+        const auto& stop2 = m_gradientStops[i + 1];
+        
+        float range = stop2.position - stop1.position;
+        if (range <= 0.0f) {
+            return stop1.color;
+        }
+        
+        float localT = (t - stop1.position) / range;
+        
+        // Convert to HSV and interpolate
+        auto hsv1 = rgbToHsv(stop1.color);
+        auto hsv2 = rgbToHsv(stop2.color);
+        
+        // Handle hue wraparound
+        float h1 = hsv1.r / 255.0f * 360.0f;
+        float h2 = hsv2.r / 255.0f * 360.0f;
+        
+        float hDiff = h2 - h1;
+        if (hDiff > 180.0f) hDiff -= 360.0f;
+        if (hDiff < -180.0f) hDiff += 360.0f;
+        
+        float h = h1 + hDiff * localT;
+        if (h < 0.0f) h += 360.0f;
+        if (h >= 360.0f) h -= 360.0f;
+        
+        float s = hsv1.g / 255.0f + (hsv2.g / 255.0f - hsv1.g / 255.0f) * localT;
+        float v = hsv1.b / 255.0f + (hsv2.b / 255.0f - hsv1.b / 255.0f) * localT;
+        
+        auto hsvResult = cocos2d::ccColor3B{
+            static_cast<GLubyte>(h / 360.0f * 255.0f),
+            static_cast<GLubyte>(s * 255.0f),
+            static_cast<GLubyte>(v * 255.0f)
+        };
+        
+        auto result = hsvToRgb(hsvResult);
+        m_interpolationValid = true;
+        return result;
+        
+    } catch (const std::exception& e) {
+        IntegrityLogger::get()->logError("GradientBrush", "HSV interpolation failed: " + std::string(e.what()));
+        m_interpolationValid = false;
+        revertToLastValid();
+        return {128, 128, 128}; // Gray fallback
+    }
+}
+
+bool GradientBrushDrawer::validateHSVInterpolation() {
+    // Check for invalid color values
+    for (const auto& stop : m_gradientStops) {
+        // Basic RGB validation - more sophisticated checks could be added
+        if (stop.alpha < 0.0f || stop.alpha > 1.0f) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void GradientBrushDrawer::revertToLastValid() {
+    if (m_lastValidCache.isValid) {
+        log::info("Reverting gradient to last valid state");
+        m_gradientStops = m_lastValidCache.stops;
+        m_gradientType = m_lastValidCache.type;
+        m_startPoint = m_lastValidCache.startPoint;
+        m_endPoint = m_lastValidCache.endPoint;
+        m_radius = m_lastValidCache.radius;
+        m_fillArea = m_lastValidCache.result;
+        m_interpolationValid = true;
+        IntegrityLogger::get()->logOperationEnd(m_lastValidCache.operationId, true, "Reverted to valid state");
+    } else {
+        log::warn("No valid gradient state to revert to");
+    }
+}
+
+std::string GradientBrushDrawer::generateOperationId() const {
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch()) % 1000;
+    
+    std::stringstream ss;
+    ss << "GRAD_" << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S") 
+       << "_" << std::setfill('0') << std::setw(3) << ms.count();
+    return ss.str();
+}
+
+cocos2d::ccColor3B GradientBrushDrawer::rgbToHsv(cocos2d::ccColor3B rgb) {
+    float r = rgb.r / 255.0f;
+    float g = rgb.g / 255.0f;
+    float b = rgb.b / 255.0f;
+    
+    float max = std::max({r, g, b});
+    float min = std::min({r, g, b});
+    float diff = max - min;
+    
+    float h = 0.0f;
+    if (diff > 0.0001f) {
+        if (max == r) {
+            h = 60.0f * std::fmod((g - b) / diff, 6.0f);
+        } else if (max == g) {
+            h = 60.0f * ((b - r) / diff + 2.0f);
+        } else {
+            h = 60.0f * ((r - g) / diff + 4.0f);
+        }
+    }
+    if (h < 0.0f) h += 360.0f;
+    
+    float s = (max > 0.0001f) ? (diff / max) : 0.0f;
+    float v = max;
+    
+    return {
+        static_cast<GLubyte>(h / 360.0f * 255.0f),
+        static_cast<GLubyte>(s * 255.0f),
+        static_cast<GLubyte>(v * 255.0f)
+    };
+}
+
+cocos2d::ccColor3B GradientBrushDrawer::hsvToRgb(cocos2d::ccColor3B hsv) {
+    float h = hsv.r / 255.0f * 360.0f;
+    float s = hsv.g / 255.0f;
+    float v = hsv.b / 255.0f;
+    
+    float c = v * s;
+    float x = c * (1.0f - std::abs(std::fmod(h / 60.0f, 2.0f) - 1.0f));
+    float m = v - c;
+    
+    float r, g, b;
+    
+    if (h >= 0.0f && h < 60.0f) {
+        r = c; g = x; b = 0.0f;
+    } else if (h >= 60.0f && h < 120.0f) {
+        r = x; g = c; b = 0.0f;
+    } else if (h >= 120.0f && h < 180.0f) {
+        r = 0.0f; g = c; b = x;
+    } else if (h >= 180.0f && h < 240.0f) {
+        r = 0.0f; g = x; b = c;
+    } else if (h >= 240.0f && h < 300.0f) {
+        r = x; g = 0.0f; b = c;
+    } else {
+        r = c; g = 0.0f; b = x;
+    }
+    
+    return {
+        static_cast<GLubyte>((r + m) * 255.0f),
+        static_cast<GLubyte>((g + m) * 255.0f),
+        static_cast<GLubyte>((b + m) * 255.0f)
+    };
 }

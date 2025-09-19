@@ -18,3 +18,17 @@ cmake-build-*/
 
 # Geode SDK
 .geode-sdk/
+
+# Logs and temporary files
+logs/
+*.log
+*.tmp
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Test outputs
+test_outputs/
+snapshots/

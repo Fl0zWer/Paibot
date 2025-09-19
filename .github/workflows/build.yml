@@ -112,3 +112,11 @@ jobs:
         else
           echo "Warning: No resource manifest found"
         fi
+    
+    - name: Run Integrity Validation Script
+      run: |
+        python3 scripts/validate_integrity.py
+    
+    - name: Run Determinism Tests
+      run: |
+        python3 scripts/test_determinism.py
