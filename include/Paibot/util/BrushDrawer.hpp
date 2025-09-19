@@ -32,7 +32,7 @@ namespace paibot {
         virtual void updateLine();
         
         // Input handling (with Allium-style modifiers)
-    virtual bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event);
+        virtual bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event);
         virtual void ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event);
         virtual void ccTouchEnded(cocos2d::CCTouch* touch, cocos2d::CCEvent* event);
         
@@ -46,3 +46,4 @@ namespace paibot {
         cocos2d::CCPoint snapToAngle(cocos2d::CCPoint const& point, cocos2d::CCPoint const& origin) const;
     };
 }
+

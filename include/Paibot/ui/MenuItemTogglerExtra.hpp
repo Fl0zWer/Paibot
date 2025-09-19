@@ -23,17 +23,18 @@ namespace paibot {
             std::function<void(MenuItemTogglerExtra*)> const& callback
         );
 
-        ~MenuItemTogglerExtra() override;
+        ~MenuItemTogglerExtra() override = default;
 
         // Ensure callback invocation regardless of selector wiring
         void activate() override;
-        
+
         // Toggle and invoke callback
         void toggle(bool toggled);
         // Toggle without invoking callback (for programmatic resets)
         void toggleSilent(bool toggled);
-    bool isToggled();
-        
+        bool isToggled() const;
+
         void setCallback(std::function<void(MenuItemTogglerExtra*)> const& callback);
     };
 }
+

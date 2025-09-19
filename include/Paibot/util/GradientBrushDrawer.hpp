@@ -25,7 +25,7 @@ namespace paibot {
         float m_tolerance = 5.0f;
         int m_maxObjects = 500;
         bool m_isPreviewMode = false;
-    bool m_pendingApply = false; // if true, next click applies
+        bool m_pendingApply = false; // if true, next click applies
         
         // Flood fill state
         std::vector<std::vector<bool>> m_visitedGrid;
@@ -66,10 +66,11 @@ namespace paibot {
         void hidePreview();
         void applyGradient();
 
-    // Boundary helpers
-    void clampFillToNearbyObjects(float maxDistance = 30.f);
+        // Boundary helpers
+        void clampFillToNearbyObjects(float maxDistance = 30.f);
 
     protected:
         void drawGradientPreview();
     };
 }
+

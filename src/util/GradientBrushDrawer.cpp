@@ -2,6 +2,7 @@
 #include <manager/BrushManager.hpp>
 #include <cmath>
 #include <algorithm>
+#include <limits>
 #include <numbers>
 
 using namespace paibot;
@@ -32,11 +33,32 @@ bool GradientBrushDrawer::init() {
     return true;
 }
 
+bool GradientBrushDrawer::ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
+    if (isSpacePressed()) {
+        return false;
+    }
+
+    auto point = this->convertToNodeSpace(touch->getLocation());
+
+    if (m_isPreviewMode) {
+        if (m_pendingApply) {
+            applyGradient();
+            m_pendingApply = false;
+            return false;
+        }
+        hidePreview();
+    }
+
+    m_pendingApply = false;
+    startDrawing(point);
+    return true;
+}
+
 void GradientBrushDrawer::startDrawing(cocos2d::CCPoint const& point) {
     BrushDrawer::startDrawing(point);
     m_startPoint = point;
     m_endPoint = point;
-    
+
     // Initialize visited grid for flood fill
     auto screenSize = CCDirector::get()->getWinSize();
     int gridWidth = static_cast<int>(screenSize.width / 10) + 1;
@@ -62,7 +84,8 @@ void GradientBrushDrawer::updateDrawing(cocos2d::CCPoint const& point) {
     }
     
     m_endPoint = adjustedPoint;
-    
+    m_radius = ccpDistance(m_startPoint, m_endPoint);
+
     // Draw preview based on gradient type
     clearOverlay();
     drawGradientPreview();
@@ -72,10 +95,12 @@ void GradientBrushDrawer::finishDrawing() {
     if (!m_isDrawing) return;
     
     BrushDrawer::finishDrawing();
-    
+
     // Perform flood fill and generate gradient
     performFloodFill(m_startPoint);
+    clampFillToNearbyObjects();
     showPreview();
+    m_pendingApply = true;
 }
 
 void GradientBrushDrawer::clearOverlay() {
@@ -138,10 +163,11 @@ std::vector<cocos2d::CCPoint> GradientBrushDrawer::simplifyPolygon(const std::ve
 
 void GradientBrushDrawer::generateGradientObjects() {
     if (m_fillArea.size() < 3) return;
-    
+
     auto manager = BrushManager::get();
     int steps = manager->m_gradientSteps;
-    
+    m_radius = std::max(m_radius, ccpDistance(m_startPoint, m_endPoint));
+
     // Generate gradient bands based on type
     for (int i = 0; i < steps; ++i) {
         float t = static_cast<float>(i) / (steps - 1);
@@ -282,12 +308,17 @@ std::vector<cocos2d::CCPoint> GradientBrushDrawer::generateAngularSector(float s
 }
 
 void GradientBrushDrawer::showPreview() {
+    if (m_fillArea.empty()) {
+        log::warn("Gradient preview aborted: no fill area computed");
+        return;
+    }
     m_isPreviewMode = true;
     generateGradientObjects();
 }
 
 void GradientBrushDrawer::hidePreview() {
     m_isPreviewMode = false;
+    m_pendingApply = false;
     clearOverlay();
 }
 
@@ -300,14 +331,19 @@ void GradientBrushDrawer::applyGradient() {
               m_gradientStops.size(), m_fillArea.size());
     
     hidePreview();
+    m_pendingApply = false;
 }
 
 void GradientBrushDrawer::drawGradientPreview() {
     if (!m_overlayDrawNode) return;
-    
+
     // Draw gradient direction indicator
     auto color = BrushManager::get()->getBrushColor();
     m_overlayDrawNode->drawSegment(m_startPoint, m_endPoint, 2.0f, ccc4FFromccc3B(color));
+
+    if (m_radius <= std::numeric_limits<float>::epsilon()) {
+        m_radius = ccpDistance(m_startPoint, m_endPoint);
+    }
     
     // Draw gradient type indicator
     switch (m_gradientType) {
@@ -340,8 +376,65 @@ void GradientBrushDrawer::drawGradientPreview() {
             );
             break;
         case GradientType::Angular:
-            // Draw arc indicator
-            // Simplified - just draw the direction line
+            // Draw arc indicator - show radius to communicate sweep size
+            m_overlayDrawNode->drawCircle(
+                m_startPoint,
+                std::max(m_radius, 1.0f),
+                ccc4FFromccc3B(color),
+                1.0f,
+                ccc4FFromccc3B(color),
+                16
+            );
             break;
+    }
+}
+
+float GradientBrushDrawer::tForPoint(cocos2d::CCPoint const& p) const {
+    switch (m_gradientType) {
+        case GradientType::Linear: {
+            auto direction = ccpSub(m_endPoint, m_startPoint);
+            auto length = ccpLength(direction);
+            if (length <= std::numeric_limits<float>::epsilon()) {
+                return 0.0f;
+            }
+            auto normalized = ccpNormalize(direction);
+            auto projection = ccpDot(ccpSub(p, m_startPoint), normalized);
+            return std::clamp(0.5f + projection / length, 0.0f, 1.0f);
+        }
+        case GradientType::Radial: {
+            if (m_radius <= std::numeric_limits<float>::epsilon()) {
+                return 0.0f;
+            }
+            auto distance = ccpDistance(p, m_startPoint);
+            return std::clamp(distance / m_radius, 0.0f, 1.0f);
+        }
+        case GradientType::Angular: {
+            auto forward = ccpSub(m_endPoint, m_startPoint);
+            if (ccpLengthSQ(forward) <= std::numeric_limits<float>::epsilon()) {
+                return 0.0f;
+            }
+            auto angle = std::atan2(static_cast<double>(forward.y), static_cast<double>(forward.x));
+            auto toPoint = std::atan2(static_cast<double>(p.y - m_startPoint.y), static_cast<double>(p.x - m_startPoint.x));
+            auto delta = std::fmod(static_cast<float>(toPoint - angle + kTwoPi), kTwoPi);
+            return std::clamp(delta / kTwoPi, 0.0f, 1.0f);
+        }
+    }
+    return 0.0f;
+}
+
+void GradientBrushDrawer::clampFillToNearbyObjects(float maxDistance) {
+    if (m_fillArea.empty()) {
+        return;
+    }
+
+    float maxDistanceSq = maxDistance * maxDistance;
+    for (auto& point : m_fillArea) {
+        auto offset = ccpSub(point, m_startPoint);
+        float lengthSq = offset.x * offset.x + offset.y * offset.y;
+        if (lengthSq > maxDistanceSq && lengthSq > std::numeric_limits<float>::epsilon()) {
+            float scale = maxDistance / std::sqrt(lengthSq);
+            point.x = m_startPoint.x + offset.x * scale;
+            point.y = m_startPoint.y + offset.y * scale;
+        }
     }
 }
