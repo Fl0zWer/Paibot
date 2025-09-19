@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+cmake-build-*/
+*.o
+*.obj
+*.dll
+*.dylib
+*.so
+*.pdb
+*.exp
+*.lib
+*.idb
+*.suo
+*.user
+.DS_Store
+.vscode/
+.idea/
