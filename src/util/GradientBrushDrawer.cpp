@@ -2,9 +2,14 @@
 #include <manager/BrushManager.hpp>
 #include <cmath>
 #include <algorithm>
+#include <numbers>
 
 using namespace paibot;
 using namespace geode::prelude;
+
+namespace {
+    constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0f;
+}
 
 GradientBrushDrawer* GradientBrushDrawer::create() {
     auto ret = new (std::nothrow) GradientBrushDrawer();
@@ -152,7 +157,7 @@ void GradientBrushDrawer::generateGradientObjects() {
                 bandPoints = generateRadialRing(t * m_radius, (i + 1.0f) / steps * m_radius);
                 break;
             case GradientType::Angular:
-                bandPoints = generateAngularSector(t * 2 * M_PI, (i + 1.0f) / steps * 2 * M_PI);
+                bandPoints = generateAngularSector(t * kTwoPi, (i + 1.0f) / steps * kTwoPi);
                 break;
         }
         
@@ -229,7 +234,7 @@ std::vector<cocos2d::CCPoint> GradientBrushDrawer::generateRadialRing(float inne
     
     // Generate ring points
     for (int i = 0; i <= segments; ++i) {
-        float angle = 2 * M_PI * i / segments;
+        float angle = kTwoPi * i / segments;
         float cos_a = std::cos(angle);
         float sin_a = std::sin(angle);
         
@@ -242,7 +247,7 @@ std::vector<cocos2d::CCPoint> GradientBrushDrawer::generateRadialRing(float inne
     
     // Inner ring (reverse order for proper winding)
     for (int i = segments; i >= 0; --i) {
-        float angle = 2 * M_PI * i / segments;
+        float angle = kTwoPi * i / segments;
         float cos_a = std::cos(angle);
         float sin_a = std::sin(angle);
         

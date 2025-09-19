@@ -9,11 +9,19 @@ namespace paibot {
         cocos2d::CCDrawNode* m_overlayDrawNode = nullptr;
         std::vector<cocos2d::CCPoint> m_points;
         bool m_isDrawing = false;
-        
+        bool m_isActive = false;
+        cocos2d::CCNode* m_hostNode = nullptr;
+
     public:
         static BrushDrawer* create();
         bool init() override;
-        
+        ~BrushDrawer() override;
+
+        // Lifecycle management controlled by ToolManager to avoid duplicate listeners.
+        void start(cocos2d::CCNode* hostNode);
+        void stop();
+        bool isActive() const { return m_isActive; }
+
         virtual void startDrawing(cocos2d::CCPoint const& point);
         virtual void updateDrawing(cocos2d::CCPoint const& point);
         virtual void finishDrawing();

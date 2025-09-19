@@ -43,6 +43,7 @@ add_library(${PROJECT_NAME} SHARED
     
     # Manager classes
     src/manager/BrushManager.cpp
+    src/manager/ToolManager.cpp
     
     # Utility classes - drawing tools
     src/util/BrushDrawer.cpp
