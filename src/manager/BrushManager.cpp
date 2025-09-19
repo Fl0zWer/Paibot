@@ -1,4 +1,5 @@
 #include <manager/BrushManager.hpp>
+#include <algorithm>
 
 using namespace paibot;
 using namespace geode::prelude;
@@ -32,7 +33,7 @@ void BrushManager::loadSettings() {
     m_brushWidth = mod->getSettingValue<double>("brush-line-width");
     m_brushColorId = mod->getSettingValue<int64_t>("brush-color-id");
     m_gradientSteps = mod->getSettingValue<int64_t>("gradient-steps");
-    m_optimizerTargetReduction = mod->getSettingValue<double>("optimizer-target-reduction");
+    setOptimizerTargetReduction(mod->getSettingValue<double>("optimizer-target-reduction"));
     m_seamlessTileSize = mod->getSettingValue<int64_t>("seamless-tile-size");
 }
 
@@ -43,6 +44,15 @@ void BrushManager::saveSettings() {
     mod->setSavedValue("gradient-steps", m_gradientSteps);
     mod->setSavedValue("optimizer-target-reduction", m_optimizerTargetReduction);
     mod->setSavedValue("seamless-tile-size", m_seamlessTileSize);
+}
+
+void BrushManager::setOptimizerTargetReduction(float reduction) {
+    // Clamp to the UI range so runtime changes stay in sync with the slider limits
+    m_optimizerTargetReduction = std::clamp(reduction, 0.1f, 0.9f);
+}
+
+float BrushManager::getOptimizerTargetReduction() const {
+    return m_optimizerTargetReduction;
 }
 
 void BrushManager::updateKeyboardState() {

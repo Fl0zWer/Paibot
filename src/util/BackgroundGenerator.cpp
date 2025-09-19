@@ -1,5 +1,6 @@
 #include <util/BackgroundGenerator.hpp>
 #include <manager/BrushManager.hpp>
+#include <algorithm>
 #include <cmath>
 #include <random>
 
@@ -174,14 +175,17 @@ TileSet BackgroundGenerator::generateProcedural() {
         // Apply color palette (simplified)
         std::vector<cocos2d::ccColor3B> palette = {
             {64, 128, 255},   // Deep blue
-            {128, 200, 255},  // Light blue  
+            {128, 200, 255},  // Light blue
             {255, 255, 200},  // Light yellow
             {200, 255, 128},  // Light green
             {128, 200, 64}    // Dark green
         };
-        
+
         auto coloredTile = applyColorPalette(heightmap, palette);
-        // tileSet.tiles.push_back(coloredTile); // Would add to tile set
+        if (coloredTile) {
+            // Re-enable tile population so preview/export receive usable data.
+            tileSet.tiles.push_back(coloredTile);
+        }
     }
     
     log::info("Generated procedural tileset with {} noise octaves", m_settings.octaves);
@@ -192,17 +196,62 @@ TileSet BackgroundGenerator::generateProcedural() {
 cocos2d::CCImage* BackgroundGenerator::generatePerlinNoise(int size, float scale, int octaves) {
     // Simplified Perlin noise implementation
     // In real implementation, would use proper Perlin noise with tileable properties
-    
+    if (size <= 0) {
+        return nullptr;
+    }
+
     std::mt19937 rng(m_settings.noiseSeed);
     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-    
-    // Create a basic random heightmap as placeholder
-    auto texture = new cocos2d::CCTexture2D();
-    // In real implementation, would generate proper Perlin noise here
-    
+
+    const int octaveCount = std::max(1, octaves);
+    std::vector<float> octaveOffsets(octaveCount);
+    for (int i = 0; i < octaveCount; ++i) {
+        octaveOffsets[i] = dist(rng) * 6.28318f; // Random phase per octave
+    }
+
+    std::vector<unsigned char> pixels(size * size * 4);
+    for (int y = 0; y < size; ++y) {
+        for (int x = 0; x < size; ++x) {
+            float amplitude = 1.0f;
+            float frequency = std::max(0.01f, scale);
+            float value = 0.0f;
+            float amplitudeSum = 0.0f;
+
+            for (int octave = 0; octave < octaveCount; ++octave) {
+                float sampleX = (static_cast<float>(x) / size) * frequency + octaveOffsets[octave];
+                float sampleY = (static_cast<float>(y) / size) * frequency + octaveOffsets[octave] * 0.5f;
+                float sample = std::sin(sampleX) * std::cos(sampleY);
+
+                value += sample * amplitude;
+                amplitudeSum += amplitude;
+
+                amplitude *= 0.5f;
+                frequency *= 2.0f;
+            }
+
+            if (amplitudeSum > 0.0f) {
+                value /= amplitudeSum;
+            }
+
+            float normalized = std::clamp(0.5f + 0.5f * value, 0.0f, 1.0f);
+            unsigned char channel = static_cast<unsigned char>(normalized * 255.0f);
+            size_t idx = static_cast<size_t>(y) * size * 4 + static_cast<size_t>(x) * 4;
+            pixels[idx + 0] = channel;
+            pixels[idx + 1] = channel;
+            pixels[idx + 2] = channel;
+            pixels[idx + 3] = 255;
+        }
+    }
+
+    auto image = new cocos2d::CCImage();
+    if (!image->initWithRawData(pixels.data(), static_cast<int>(pixels.size()), size, size, 8, true)) {
+        delete image;
+        return nullptr;
+    }
+
     log::info("Generated {}x{} Perlin noise with scale {}", size, size, static_cast<double>(scale));
-    
-    return nullptr; // Placeholder return
+
+    return image;
 }
 
 cocos2d::CCImage* BackgroundGenerator::generateSimplexNoise(int size, float scale, int octaves) {
