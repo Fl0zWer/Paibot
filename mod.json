@@ -1,0 +1,41 @@
+{
+  "geode": "2.0.0",
+  "version": "v0.1.0",
+  "id": "paibot.base",
+  "name": "Base Geode Mod",
+  "description": "Plantilla mínima para comenzar un mod de Geode inspirada en Allium.",
+  "authors": [
+    "Paibot"
+  ],
+  "dependencies": [
+    {
+      "id": "geode.loader",
+      "version": ">=2.0.0"
+    }
+  ],
+  "binary": [
+    {
+      "os": "windows",
+      "arch": "x86",
+      "path": "build/PaibotGeodeBase.dll"
+    },
+    {
+      "os": "mac",
+      "arch": "x86",
+      "path": "build/libPaibotGeodeBase.dylib"
+    },
+    {
+      "os": "linux",
+      "arch": "x86",
+      "path": "build/libPaibotGeodeBase.so"
+    }
+  ],
+  "settings": [
+    {
+      "key": "show-menu-label",
+      "name": "Mostrar mensaje en el menú",
+      "type": "bool",
+      "default": true
+    }
+  ]
+}
