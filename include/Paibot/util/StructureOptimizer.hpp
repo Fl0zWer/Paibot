@@ -2,6 +2,8 @@
 
 #include <Geode/Geode.hpp>
 #include <vector>
+#include <string>
+#include <memory>
 
 namespace paibot {
     enum class OptimizationMode {
@@ -15,6 +17,7 @@ namespace paibot {
         float reductionPercentage = 0.0f;
         float deltaE = 0.0f;      // Visual difference measure
         float processingTime = 0.0f;
+        std::string operationId;  // Unique ID for logging
     };
     
     // Scope & options for optimization run
@@ -46,68 +49,83 @@ namespace paibot {
     class StructureOptimizer {
     protected:
         OptimizationMode m_mode = OptimizationMode::VanillaSafe;
-        int m_targetCount = 2000;
-        float m_geometryTolerance = 0.1f;
-        float m_colorTolerance = 2.0f;  // Delta E threshold
-        float m_maxScale = 10.0f;
-        bool m_preserveGroupIDs = true;
-        bool m_preserveZOrder = true;
-        bool m_preserveChannels = true;
-        bool m_noTouchHitboxes = true;
-        float m_visualTolerance = 1.0f;
-
+        
+        // Snapshot for undo functionality
+        std::vector<GameObject*> m_originalSnapshot;
+        bool m_hasSnapshot = false;
+        
         OptimizationStats m_lastStats;
         std::vector<GameObject*> m_previewObjects;
         bool m_isPreviewActive = false;
         OptimizeOptions m_options;
         
+        // Fusion rules validation
+        struct FusionRules {
+            bool allowColorMerging = true;
+            bool allowZGroupMerging = false;
+            float minValidArea = 1.0f;
+            bool rejectCorruptPolygons = true;
+        } m_fusionRules;
+        
     public:
         static StructureOptimizer* create();
         bool init();
         
-        // Configuration
+        // Configuration - now reads from BrushManager
+        void updateFromBrushManager();
         void setOptimizationMode(OptimizationMode mode);
-        void setTargetCount(int count);
-        void setGeometryTolerance(float tolerance);
-        void setColorTolerance(float deltaE);
         void setPreserveOptions(bool groupIDs, bool zOrder, bool channels, bool hitboxes);
         
-    // Options
+        // Snapshot management for undo/revert
+        void createSnapshot(const std::vector<GameObject*>& objects);
+        bool hasSnapshot() const { return m_hasSnapshot; }
+        void revertToSnapshot();
+        void clearSnapshot();
+        
+        // Fusion rules configuration
+        void setFusionRules(const FusionRules& rules) { m_fusionRules = rules; }
+        FusionRules getFusionRules() const { return m_fusionRules; }
+        
+        // Options
         void setOptions(OptimizeOptions const& opts);
         OptimizeOptions getOptions() const;
         
-        // Main optimization pipeline
+        // Main optimization pipeline with integrity checks
         OptimizationStats optimizeSelection(const std::vector<GameObject*>& objects);
-    // Convenience: run on current selection if available (best-effort)
         OptimizationStats optimizeActiveSelection();
         void showPreview(const std::vector<GameObject*>& optimized);
         void hidePreview();
         void applyOptimization();
         
-        // Optimization algorithms
+        // Optimization algorithms with validation
         std::vector<GameObject*> normalizeObjects(const std::vector<GameObject*>& objects);
         std::vector<GameObject*> mergeGeometric(const std::vector<GameObject*>& objects);
         std::vector<GameObject*> findPatterns(const std::vector<GameObject*>& objects);
         std::vector<GameObject*> polygonize(const std::vector<GameObject*>& objects);
         std::vector<GameObject*> coalesceTriggers(const std::vector<GameObject*>& objects);
         
-        // Geometric merging
+        // Geometric merging with fusion rules
         std::vector<GameObject*> mergeLines(const std::vector<GameObject*>& objects);
         std::vector<GameObject*> mergeMosaics(const std::vector<GameObject*>& objects);
         std::vector<GameObject*> mergeSegments(const std::vector<GameObject*>& objects);
         std::vector<GameObject*> mergeOverlaps(const std::vector<GameObject*>& objects);
+        std::vector<GameObject*> groupByColorAndZGroup(const std::vector<GameObject*>& objects);
+        std::vector<GameObject*> mergeAdjacentBlocks(const std::vector<GameObject*>& objects);
         
         // Pattern recognition
         std::vector<GameObject*> createInstances(const std::vector<GameObject*>& objects);
         std::vector<GameObject*> createCustomObjects(const std::vector<GameObject*>& objects);
         
-        // Validation
+        // Validation with integrity checks
         float calculateDeltaE(const std::vector<GameObject*>& before, const std::vector<GameObject*>& after);
         bool validateOptimization(const std::vector<GameObject*>& original, const std::vector<GameObject*>& optimized);
+        bool validatePolygon(const std::vector<geode::prelude::CCPoint>& vertices);
+        bool validateFusion(GameObject* obj1, GameObject* obj2);
         
-        // Statistics
+        // Statistics and logging
         OptimizationStats getLastStats() const;
         std::string generateReport() const;
+        std::string generateUniqueOperationId() const;
     };
 }
 

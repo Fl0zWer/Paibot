@@ -129,17 +129,53 @@ The mod provides extensive configuration through Geode's settings system:
 ## Building from Source
 
 ### Requirements
-- CMake 3.21+
-- C++20 compatible compiler
-- Geode SDK 2.0+
+- CMake 3.21+ (for modern C++20 support)
+- C++20 compatible compiler (required for Geode SDK)
+- Geode SDK 4.8.0 (pinned version for stability)
+
+### Recommended Toolchain
+
+#### Windows
+- **Compiler**: MSVC 2022 (Visual Studio 17.0+)
+- **Build Tool**: MSBuild or Ninja
+- **Compilation Flags**: `/W4 /WX /permissive-` (warnings as errors)
+
+#### Linux/macOS
+- **Compiler**: Clang 14+ or GCC 11+ 
+- **Build Tool**: Ninja (recommended) or Make
+- **Compilation Flags**: `-Wall -Wextra -Werror -pedantic`
 
 ### Build Steps
+
+#### Windows (MSVC)
 ```bash
-cmake -S . -B build -DGEODE_TARGET_PLATFORM=Win64
-cmake --build build --config Release
+# Configure with MSVC toolchain
+cmake -S . -B build -DGEODE_TARGET_PLATFORM=Win64 -DCMAKE_BUILD_TYPE=Release
+
+# Build with parallel compilation
+cmake --build build --config Release --parallel
 ```
 
-The mod binary will be created in `build/` with platform-specific naming.
+#### Linux (Clang)
+```bash
+# Configure with Clang toolchain  
+cmake -S . -B build -DGEODE_TARGET_PLATFORM=Linux -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
+
+# Build with parallel compilation
+cmake --build build --config Release --parallel
+```
+
+#### Build Artifacts
+The mod binary will be created in `build/` with platform-specific naming:
+- Windows: `PaibotGeodeBase.dll` 
+- Linux: `libPaibotGeodeBase.so`
+- macOS: `libPaibotGeodeBase.dylib`
+
+### Continuous Integration
+The project uses GitHub Actions for automated building and testing:
+- **Windows**: MSVC 2022 on Windows Server 2022
+- **Linux**: Clang 14 on Ubuntu 22.04
+- **Validation**: mod.json schema and resource integrity checks
 
 ## Development Roadmap
 

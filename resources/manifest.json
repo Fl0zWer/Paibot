@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "build_timestamp": "2024-01-01T00:00:00Z",
+  "resources": {
+    "presets": {
+      "hash": "",
+      "files": []
+    },
+    "textures": {
+      "hash": "",
+      "files": []
+    },
+    "sounds": {
+      "hash": "",
+      "files": []
+    }
+  },
+  "total_hash": ""
+}

@@ -25,8 +25,22 @@ class $modify(PaibotEditorUI, EditorUI) {
             return false;
         }
 
-        // Initialize the brush manager
-        BrushManager::get()->loadSettings();
+        // Initialize the brush manager with integrity checks
+        auto brushManager = BrushManager::get();
+        brushManager->loadSettings();
+        
+        // Check resource integrity if enabled
+        if (brushManager->isIntegrityValid()) {
+            log::info("Resource integrity checks passed");
+        } else {
+            log::warn("Resource integrity checks failed - some features may be disabled");
+        }
+        
+        // Validate Geode interface version
+        if (!validateGeodeCompatibility()) {
+            log::error("Geode compatibility check failed");
+            return false;
+        }
 
         // Create and add the Paibot button bar (inspired by Allium's AlliumButtonBar)
         m_fields->m_paibotButtonBar = PaibotButtonBar::create(this);
@@ -49,6 +63,36 @@ class $modify(PaibotEditorUI, EditorUI) {
         }
 
         return true;
+    }
+    
+    bool validateGeodeCompatibility() {
+        // Check if current Geode version is compatible
+        auto geodeVersion = Loader::get()->getLoadedMod("geode.loader")->getVersion();
+        log::info("Geode version: {}", geodeVersion.toString());
+        
+        // Check game version compatibility
+        auto gameVersion = Mod::get()->getSavedValue<std::string>("game-version", "unknown");
+        auto supportedBuilds = std::vector<std::string>{"2.207", "2.2074"};
+        
+        bool compatible = false;
+        for (const auto& build : supportedBuilds) {
+            if (gameVersion.find(build) != std::string::npos) {
+                compatible = true;
+                break;
+            }
+        }
+        
+        if (!compatible) {
+            log::warn("Game version {} may not be fully supported", gameVersion);
+            
+            // Enable safe mode if version is unsupported
+            if (auto brushManager = BrushManager::get()) {
+                brushManager->setSafeMode(true);
+                log::info("Safe mode enabled due to version incompatibility");
+            }
+        }
+        
+        return true; // Allow loading even with warnings
     }
 
     void onPlaytest(cocos2d::CCObject* sender) {

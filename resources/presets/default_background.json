@@ -1,0 +1,17 @@
+{
+  "name": "Default Seamless Background",
+  "version": "1.0",
+  "type": "procedural",
+  "parameters": {
+    "tileSize": 1024,
+    "seed": 42,
+    "pattern": "wang",
+    "colorPalette": ["#FF6B6B", "#4ECDC4", "#45B7D1"],
+    "complexity": 0.7
+  },
+  "metadata": {
+    "created": "2024-01-01T00:00:00Z",
+    "author": "Paibot",
+    "description": "Default procedural background with Wang tiles"
+  }
+}
