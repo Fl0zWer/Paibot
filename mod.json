@@ -1,9 +1,9 @@
 {
   "geode": "2.0.0",
   "version": "v0.1.0",
-  "id": "paibot.base",
-  "name": "Base Geode Mod",
-  "description": "Plantilla mínima para comenzar un mod de Geode inspirada en Allium.",
+  "id": "paibot.allium-inspired",
+  "name": "Paibot Drawing Tool",
+  "description": "Advanced drawing tool for Geometry Dash inspired by Allium with gradient bucket, structure optimizer, and seamless backgrounds.",
   "authors": [
     "Paibot"
   ],
@@ -13,6 +13,7 @@
       "version": ">=2.0.0"
     }
   ],
+  "tags": ["editor", "enhancement", "utility"],
   "binary": [
     {
       "os": "windows",
@@ -32,10 +33,48 @@
   ],
   "settings": [
     {
-      "key": "show-menu-label",
-      "name": "Mostrar mensaje en el menú",
-      "type": "bool",
-      "default": true
+      "key": "brush-line-width",
+      "type": "float",
+      "default": 5,
+      "min": 0.5,
+      "name": "Brush Width",
+      "description": "The thickness of the brush",
+      "max": 30
+    },
+    {
+      "key": "brush-color-id",
+      "type": "int",
+      "default": 1011,
+      "name": "Brush Color ID",
+      "description": "The ID of the brush color",
+      "min": 1,
+      "max": 1020
+    },
+    {
+      "key": "gradient-steps",
+      "type": "int",
+      "default": 32,
+      "min": 8,
+      "name": "Gradient Steps",
+      "description": "Number of steps in gradient transitions",
+      "max": 64
+    },
+    {
+      "key": "optimizer-target-reduction",
+      "type": "float",
+      "default": 0.6,
+      "min": 0.1,
+      "name": "Target Reduction",
+      "description": "Target percentage reduction for structure optimizer",
+      "max": 0.9
+    },
+    {
+      "key": "seamless-tile-size",
+      "type": "int",
+      "default": 1024,
+      "name": "Tile Size",
+      "description": "Size of seamless background tiles",
+      "options": [512, 1024, 2048]
     }
   ]
 }

@@ -33,6 +33,53 @@ if (NOT COMMAND setup_geode_mod)
     endif()
 endif()
 
-add_library(${PROJECT_NAME} SHARED src/main.cpp)
+# Add all source files for the Paibot drawing tool
+add_library(${PROJECT_NAME} SHARED 
+    src/main.cpp
+    
+    # UI components (inspired by Allium)
+    src/ui/PaibotButtonBar.cpp
+    src/ui/MenuItemTogglerExtra.cpp
+    
+    # Manager classes
+    src/manager/BrushManager.cpp
+    
+    # Utility classes - drawing tools
+    src/util/BrushDrawer.cpp
+    src/util/LineBrushDrawer.cpp
+    src/util/GradientBrushDrawer.cpp
+    src/util/StructureOptimizer.cpp
+    src/util/BackgroundGenerator.cpp
+    
+    # TODO: Add when implemented
+    # src/util/CurveBrushDrawer.cpp
+    # src/util/FreeBrushDrawer.cpp
+    # src/util/PolygonBrushDrawer.cpp
+    # src/util/TextBrushDrawer.cpp
+)
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+    include
+)
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    include/Paibot
+    third_party
+)
+
+# TODO: Add third-party libraries when ready
+# CPMAddPackage(
+#     GITHUB_REPOSITORY "jhasse/poly2tri"
+#     GIT_TAG "13d64e7"
+# )
+
+# CPMAddPackage(
+#     GITHUB_REPOSITORY "AngusJohnson/Clipper2" 
+#     GIT_TAG "main"
+# )
+
+# TODO: Add Anti-Grain Geometry (AGG) library
+# add_subdirectory(third_party/agg-2.6)
+# target_link_libraries(${PROJECT_NAME} Agg-2.6 poly2tri Clipper2)
 
 setup_geode_mod(${PROJECT_NAME})
