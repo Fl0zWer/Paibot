@@ -7,7 +7,7 @@ namespace paibot {
     // Custom toggle button class inspired by Allium's MenuItemTogglerExtra
     class MenuItemTogglerExtra : public CCMenuItemToggler {
     protected:
-        std::function<void(MenuItemTogglerExtra*)> m_callback;
+        std::function<void(MenuItemTogglerExtra*)> m_callback; // legacy; not used for invoke
         void onToggle(cocos2d::CCObject*);
         
     public:
@@ -22,6 +22,11 @@ namespace paibot {
             cocos2d::CCNode* selectedSprite,
             std::function<void(MenuItemTogglerExtra*)> const& callback
         );
+
+        ~MenuItemTogglerExtra() override;
+
+        // Ensure callback invocation regardless of selector wiring
+        void activate() override;
         
         // Toggle and invoke callback
         void toggle(bool toggled);

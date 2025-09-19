@@ -17,6 +17,32 @@ namespace paibot {
         float processingTime = 0.0f;
     };
     
+    // Scope & options for optimization run
+    struct OptimizeOptions {
+        // Scope
+        bool useSelectionOnly = true;   // false -> whole scene (not yet wired)
+        
+        // Inclusion filters
+        bool includeRotated = false;
+        bool includeNonUniformScale = false;
+        bool includeHidden = false;
+        bool includeLocked = false;
+        
+        // Object kinds
+        bool includeTiles = true;
+        bool includeWalls = true;
+        bool includeDecorRects = false;
+
+        // Behavior
+        bool keepExactSkins = true;           // if false, use canonical rectangular tile
+        bool respectHoles = true;             // if false, fill holes of same cluster
+        float colorTolerance = 0.0f;          // 0 = exact ccColor3B match
+        int maxWidthCells = 256;              // limit per piece to avoid huge scales
+        int maxHeightCells = 256;
+        bool forceGridSnap = true;            // snap to grid for generated rectangles
+        bool verboseLog = true;               // print detailed report to log
+    };
+    
     class StructureOptimizer {
     protected:
         OptimizationMode m_mode = OptimizationMode::VanillaSafe;
@@ -45,8 +71,14 @@ namespace paibot {
         void setColorTolerance(float deltaE);
         void setPreserveOptions(bool groupIDs, bool zOrder, bool channels, bool hitboxes);
         
+    // Options
+    void setOptions(OptimizeOptions const& opts);
+    OptimizeOptions getOptions() const;
+        
         // Main optimization pipeline
         OptimizationStats optimizeSelection(const std::vector<GameObject*>& objects);
+    // Convenience: run on current selection if available (best-effort)
+    OptimizationStats optimizeActiveSelection();
         void showPreview(const std::vector<GameObject*>& optimized);
         void hidePreview();
         void applyOptimization();

@@ -25,6 +25,7 @@ namespace paibot {
         float m_tolerance = 5.0f;
         int m_maxObjects = 500;
         bool m_isPreviewMode = false;
+    bool m_pendingApply = false; // if true, next click applies
         
         // Flood fill state
         std::vector<std::vector<bool>> m_visitedGrid;
@@ -35,6 +36,7 @@ namespace paibot {
         bool init() override;
         
         // Override drawing methods
+        bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
         void startDrawing(cocos2d::CCPoint const& point) override;
         void updateDrawing(cocos2d::CCPoint const& point) override;
         void finishDrawing() override;
@@ -56,11 +58,16 @@ namespace paibot {
         std::vector<cocos2d::CCPoint> generateLinearBands(float t1, float t2);
         std::vector<cocos2d::CCPoint> generateRadialRing(float innerRadius, float outerRadius);
         std::vector<cocos2d::CCPoint> generateAngularSector(float startAngle, float endAngle);
+        // Map a world point to a 0..1 t along current gradient
+        float tForPoint(cocos2d::CCPoint const& p) const;
         
         // Preview system
         void showPreview();
         void hidePreview();
         void applyGradient();
+
+    // Boundary helpers
+    void clampFillToNearbyObjects(float maxDistance = 30.f);
 
     protected:
         void drawGradientPreview();

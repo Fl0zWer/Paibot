@@ -46,6 +46,14 @@
       "default": 1024,
       "name": "Tile Size",
       "description": "Background tile size"
+    },
+    "draw-object-id": {
+      "type": "int",
+      "default": 211,
+      "min": 1,
+      "max": 9999,
+      "name": "Draw Object ID",
+      "description": "Object ID used when creating editor objects"
     }
   }
 }

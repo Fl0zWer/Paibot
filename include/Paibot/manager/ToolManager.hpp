@@ -2,9 +2,10 @@
 
 #include <Geode/Geode.hpp>
 #include <map>
+// BrushDrawer must be a complete type here because geode::Ref asserts on CCObject inheritance
+#include <util/BrushDrawer.hpp>
 
 namespace paibot {
-    class BrushDrawer;
     class MenuItemTogglerExtra;
 
     enum class ToolKind {

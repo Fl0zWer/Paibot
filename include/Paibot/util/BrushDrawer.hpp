@@ -17,6 +17,9 @@ namespace paibot {
         bool init() override;
         ~BrushDrawer() override;
 
+        // Ensure we receive one-by-one touches with high priority while active
+        void registerWithTouchDispatcher() override;
+
         // Lifecycle management controlled by ToolManager to avoid duplicate listeners.
         void start(cocos2d::CCNode* hostNode);
         void stop();
