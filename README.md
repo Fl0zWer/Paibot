@@ -126,6 +126,15 @@ The mod provides extensive configuration through Geode's settings system:
 4. Preview the 3×3 tile pattern
 5. Export as sprites or JSON preset
 
+## Conversational Assistant
+
+Paibot ahora incluye un asistente conversacional alimentado por Gemini con memoria por usuario.
+
+- **Estilo Paimon**: cuando la conversación menciona explícitamente a Paibot, las respuestas se transforman con el tono energético de Paimon.
+- **Memoria persistente**: el historial de cada usuario se guarda en `memory/<owner>/<repo>/<branch>/usuario.json`, utilizando las variables de entorno `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME` y `GITHUB_BRANCH`.
+- **Documentación dinámica**: las preguntas sobre comandos leen la información directamente de los archivos `.md` dentro de `commands/` para dar instrucciones precisas.
+- **Gemini API**: el asistente usa la clave `GEMINI_API_KEY` para conectarse al modelo `gemini-pro` y generar respuestas en español conscientes de que se trata de un bot.
+
 ## Building from Source
 
 ### Requirements
