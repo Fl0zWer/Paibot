@@ -29,6 +29,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Bot memory storage
+memory/
+
 # Test outputs
 test_outputs/
 snapshots/
